@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private authService: AuthService,
-    config: ConfigService,
+    private config: ConfigService,
     private jwtService: JwtService,
   ) {
     super({
@@ -19,7 +19,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         (request: Request) => {
           // console.log('jwt strategy', request.cookies);
 
-          let data = request?.cookies['auth-cookie'];
+          let data =
+            request?.cookies[this.config.get('COOKIE_AUTH', 'Authentication')];
           // console.log({ data });
 
           if (!data) {

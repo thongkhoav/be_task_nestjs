@@ -9,6 +9,7 @@ import {
   Get,
   Req,
   Res,
+  Version,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -22,9 +23,8 @@ import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
 
-@Controller('auth')
+@Controller({ version: '1', path: 'auth' })
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -59,7 +59,7 @@ export class AuthController {
   ): Promise<any> {
     var tokens = await this.authService.login(dto);
 
-    res.cookie('auth-cookie', tokens, {
+    res.cookie(this.config.get('COOKIE_AUTH', 'Authentication'), tokens, {
       maxAge: 1000 * 60 * 60 * 24 * 7,
       httpOnly: true, // set to true in production
       secure: false, // set to true in production

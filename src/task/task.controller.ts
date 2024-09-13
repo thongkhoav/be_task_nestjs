@@ -17,7 +17,10 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateStatusTaskDTO } from './dto/update-task-status.dto';
 import { AssignTaskDTO } from './dto/assign-task.dto';
 
-@Controller('task')
+@Controller({
+  version: '1',
+  path: 'task',
+})
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
