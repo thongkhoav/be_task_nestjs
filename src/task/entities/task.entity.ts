@@ -4,7 +4,13 @@ import { AbstractEntity } from 'src/database/abstract.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { Room } from 'src/room/entities/room.entity';
 
-@Entity({ name: 'Tasks' })
+export enum TaskStatus {
+  TODO = 'TODO',
+  PROCESSING = 'PROCESSING',
+  DONE = 'DONE',
+}
+
+@Entity()
 export class Task extends AbstractEntity<Task> {
   @Column()
   title: string = '';
@@ -15,8 +21,8 @@ export class Task extends AbstractEntity<Task> {
   @Column()
   dueDate: Date;
 
-  @Column({ default: false })
-  isComplete: boolean = false;
+  @Column({ default: TaskStatus.TODO })
+  status: string = TaskStatus.TODO;
 
   @Column()
   review: string = '';

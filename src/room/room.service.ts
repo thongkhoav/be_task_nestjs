@@ -21,23 +21,18 @@ export class RoomService implements RoomServiceInterface {
   ) {}
 
   async getAllRooms(userId: string) {
+    // left join will get all rooms
+    // userRoom.userId = :userId will get the rooms that the user joined
     const rooms = await this.roomRepository
       .createQueryBuilder('room')
-      .leftJoin(
-        (qb) =>
-          qb
-            .select('userRoom.roomId')
-            .from(UserRoom, 'userRoom')
-            .where('userRoom.userId = :userId', { userId })
-            .distinctOn(['userRoom.roomId']),
-        'joinedRoom',
-        'room.id = joinedRoom.roomId',
-      )
-      .addSelect(
-        'CASE WHEN joinedRoom.roomId IS NOT NULL THEN TRUE ELSE FALSE END',
-        'isJoined',
-      )
-      .orderBy('room.createdAt', 'DESC')
+      .leftJoin('room.userRooms', 'userRoom')
+      .where('userRoom.userId = :userId', { userId })
+      .select([
+        'room.id as room_id',
+        'room.name as room_name',
+        'room.description as room_description',
+        'CASE WHEN userRoom.userId IS NOT NULL THEN TRUE ELSE FALSE END as isJoined',
+      ])
       .getRawMany();
 
     return rooms.map((room) => ({
@@ -50,7 +45,7 @@ export class RoomService implements RoomServiceInterface {
 
   async getRoomById(roomId: string) {
     // get user of room by room id through userRoomRepo
-    const user = await this.userRoomRepo.find({
+    const user = await this.userRoomRepo.findOne({
       where: { room: { id: roomId }, isOwner: true },
       relations: ['user'],
       select: ['user'],
@@ -59,7 +54,11 @@ export class RoomService implements RoomServiceInterface {
     return {
       roomName: room.name,
       roomDescription: room.description,
-      owner: user.find((u) => u.isOwner).user,
+      owner: {
+        id: user.user.id,
+        email: user.user.email,
+        fullName: user.user.fullName,
+      },
     };
   }
 
@@ -104,8 +103,27 @@ export class RoomService implements RoomServiceInterface {
     throw new Error('Method not implemented.');
   }
 
-  deleteRoom(roomId: string) {
-    throw new Error('Method not implemented.');
+  async removeRoomValidator(ownerId: string, roomId: string): Promise<string> {
+    // check if room is exist
+    if (!this.roomRepository.findOne({ where: { id: roomId } })) {
+      throw new Error('Room not found');
+    }
+
+    // check if room is empty
+    const userRooms = await this.userRoomRepo.find({
+      where: { room: { id: roomId } },
+    });
+    if (userRooms.length > 1) {
+      throw new Error('Room has members. Please remove all members first');
+    } else {
+      return 'Remove room will remove all members and tasks in the room. Are you sure?';
+    }
+  }
+
+  async removeRoom(roomId: string) {
+    await this.entityManager.transaction(async (manager) => {
+      await manager.softRemove(Room, { id: roomId });
+    });
   }
 
   addMemberValidator(ownerId: string, email: string, roomId: string) {
@@ -143,15 +161,74 @@ export class RoomService implements RoomServiceInterface {
     userRoom.isOwner = false;
     await this.userRoomRepo.save(userRoom);
   }
-  async removeMember(userId: string, roomId: string): Promise<boolean> {
-    var userRoom = await this.userRoomRepo.findOne({
-      where: { user: { id: userId }, room: { id: roomId } },
-    });
-    if (!userRoom) {
-      return false;
+
+  async removeMemberValidator(
+    ownerId: string,
+    userId: string,
+    roomId: string,
+    removeAll: boolean,
+  ) {
+    // check if room is exist
+    if (!(await this.roomRepository.findOne({ where: { id: roomId } }))) {
+      throw new Error('Room not found');
     }
-    await this.userRoomRepo.remove(userRoom);
-    return true;
+
+    // check if owner is the owner of the room
+    if (!this.isRoomCreator(ownerId, roomId)) {
+      throw new Error('You are not the owner of the room');
+    }
+
+    if (!removeAll) {
+      // check if user is exist
+      const removeUser = await this.userRepo.findOne({ where: { id: userId } });
+      if (!removeUser) {
+        throw new Error('User not found');
+      }
+
+      // check if user is already a member of the room
+      const userRoom = await this.userRoomRepo.findOne({
+        where: {
+          user: { id: removeUser.id },
+          room: { id: roomId },
+          isOwner: false,
+        },
+      });
+      if (!userRoom) {
+        return false;
+      }
+    } else {
+      // check if room is empty
+      const userRooms = await this.userRoomRepo.find({
+        where: { room: { id: roomId } },
+      });
+      if (userRooms.length <= 1) {
+        throw new Error('Room has no members');
+      }
+    }
+  }
+
+  async removeMember(
+    userId: string,
+    roomId: string,
+    removeAll: boolean,
+  ): Promise<boolean> {
+    if (removeAll) {
+      await this.userRoomRepo.softRemove(
+        await this.userRoomRepo.find({
+          where: { room: { id: roomId } },
+        }),
+      );
+      return true;
+    } else {
+      var userRoom = await this.userRoomRepo.findOne({
+        where: { user: { id: userId }, room: { id: roomId } },
+      });
+      if (!userRoom) {
+        return false;
+      }
+      await this.userRoomRepo.softRemove(userRoom);
+      return true;
+    }
   }
 
   getUserOfRoom(roomId: string, includeOwner: boolean) {

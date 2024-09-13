@@ -8,6 +8,7 @@ import {
   BadRequestException,
   Get,
   Req,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -21,6 +22,7 @@ import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -49,33 +51,33 @@ export class AuthController {
   }
 
   @Public()
-  @Post('signin')
+  @Post('login')
   @HttpCode(HttpStatus.OK)
-  async signinLocal(@Body() dto: LoginRequestDto): Promise<Tokens> {
-    try {
-      // var tokens = await this.authService.login(dto);
-      // return tokens;
-      const access_token = await this.jwtService.signAsync(
-        { user: 'khoa' },
-        {
-          secret: this.config.get<string>('ACCESS_TOKEN_SECRET'),
-          expiresIn: this.config.get<string>('ACCESS_TOKEN_DURATION'),
-        },
-      );
-      return {
-        access_token,
-        refresh_token: '432985637s',
-      };
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
+  async signinLocal(
+    @Res({ passthrough: true }) res,
+    @Body() dto: LoginRequestDto,
+  ): Promise<any> {
+    var tokens = await this.authService.login(dto);
+
+    res.cookie('auth-cookie', tokens, {
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+      httpOnly: true, // set to true in production
+      secure: false, // set to true in production
+      sameSite: 'strict', // set to 'none' in production
+    });
+
+    return tokens;
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: Tokens): Promise<string> {
+  async logout(@Req() req, @Body() dto: Tokens): Promise<string> {
     try {
-      await this.authService.logout(dto);
+      const curUserId = req?.user?.id;
+      if (!curUserId) {
+        throw new BadRequestException('User not found');
+      }
+      await this.authService.logout(curUserId);
       return 'Logged out';
     } catch (error) {
       throw new BadRequestException(error.message);
@@ -86,7 +88,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async protected(@Req() request: Request): Promise<any> {
     try {
-      console.log('request user', (request as any).user);
+      console.log('test protected route ', (request as any).user);
       return 'asasd';
     } catch (error) {
       throw new BadRequestException(error.message);
@@ -101,6 +103,19 @@ export class AuthController {
   //   @GetCurrentUserId() userId: number,
   //   @GetCurrentUser('refreshToken') refreshToken: string,
   // ): Promise<Tokens> {
+  // res.cookie('access_token', tokens.access_token, {
+  //   maxAge: 1000 * 60 * 60 * 24 * 7,
+  //   httpOnly: true,
+  //   secure: true,
+  //   sameSite: 'none',
+  // });
+
+  // res.cookie('refresh_token', tokens.refresh_token, {
+  //   maxAge: 1000 * 60 * 60 * 24 * 7,
+  //   httpOnly: true,
+  //   secure: true,
+  //   sameSite: 'none',
+  // });
   //   return this.authService.refreshTokens(userId, refreshToken);
   // }
 }

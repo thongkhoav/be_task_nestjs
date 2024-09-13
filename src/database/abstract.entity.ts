@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -22,6 +23,9 @@ export class AbstractEntity<T> {
   // is deleted column
   @Column({ default: false })
   isDeleted: boolean;
+
+  @DeleteDateColumn({ select: false })
+  deletedDate?: Date;
 
   constructor(partial: Partial<T>) {
     Object.assign(this, partial);

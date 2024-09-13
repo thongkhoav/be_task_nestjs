@@ -7,17 +7,16 @@ import { AuthController } from './auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { UserRoom } from './entities/user-room.entity';
-import { RefreshToken } from './entities/refresh-token.entity';
 import { Role } from './entities/role.entity';
 
 @Module({
   imports: [
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secretOrPrivateKey: process.env.ACCESS_TOKEN_SECRET,
       signOptions: { expiresIn: '7d' },
     }),
-    TypeOrmModule.forFeature([User, UserRoom, RefreshToken, Role]),
+    TypeOrmModule.forFeature([User, UserRoom, Role]),
   ],
   controllers: [AuthController],
   providers: [RtStrategy, JwtStrategy, AuthService],

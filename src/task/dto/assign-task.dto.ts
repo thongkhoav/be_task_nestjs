@@ -1,17 +1,9 @@
 import { IsDate, IsNotEmpty, IsString } from 'class-validator';
 
-export class UpdateTaskDto {
+export class AssignTaskDTO {
   @IsNotEmpty()
   @IsString()
-  title: string;
-
-  @IsNotEmpty()
-  @IsString()
-  description: string;
-
-  @IsNotEmpty()
-  @IsDate()
-  dueDate: Date;
+  taskId: string;
 
   @IsString()
   @IsNotEmpty()

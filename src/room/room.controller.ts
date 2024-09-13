@@ -52,6 +52,31 @@ export class RoomController {
     return this.roomService.addMember(body.email, roomId);
   }
 
+  @Delete('/:roomId/remove-member')
+  async removeMember(
+    @Body() body: { userId: string; removeAll: boolean },
+    @Param('roomId') roomId: string,
+    @Req() req,
+  ) {
+    const curUserId = req?.user?.id;
+
+    if (!curUserId) {
+      throw new Error('User not found');
+    }
+
+    await this.roomService.removeMemberValidator(
+      curUserId,
+      body.userId,
+      roomId,
+      body?.removeAll || false,
+    );
+    return await this.roomService.removeMember(
+      body.userId,
+      roomId,
+      body?.removeAll || false,
+    );
+  }
+
   @Get()
   getAllRooms(@Req() req) {
     const userId = req?.user?.id;
@@ -61,6 +86,11 @@ export class RoomController {
     }
 
     return this.roomService.getAllRooms(userId);
+  }
+
+  @Get('/:roomId')
+  getRoomById(@Param('roomId') roomId: string) {
+    return this.roomService.getRoomById(roomId);
   }
 
   // @Get(':id')
@@ -73,8 +103,15 @@ export class RoomController {
   //   return this.roomService.update(+id, updateRoomDto);
   // }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.roomService.remove(+id);
-  // }
+  @Delete(':roomId')
+  async removeRoom(@Param('roomId') roomId: string, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new Error('User not found');
+    }
+
+    await this.roomService.removeRoomValidator(curUserId, roomId);
+
+    return await this.roomService.removeRoom(roomId);
+  }
 }

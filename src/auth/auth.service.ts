@@ -10,7 +10,6 @@ import { AuthDto } from './dto';
 import { Tokens } from './types';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RefreshToken } from './entities/refresh-token.entity';
 const bcrypt = require('bcrypt');
 import { v4 as uuidv4 } from 'uuid';
 import { LoginRequestDto } from './dto/login-request.dto';
@@ -21,8 +20,6 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepo: Repository<User>,
-    @InjectRepository(RefreshToken)
-    private refreshTokenRepository: Repository<RefreshToken>,
     @InjectRepository(Role)
     private roleRepo: Repository<Role>,
     private jwtService: JwtService,
@@ -67,15 +64,7 @@ export class AuthService {
   async login(loginRequestDto: LoginRequestDto): Promise<Tokens> {
     const user = await this.userRepo.findOne({
       where: { email: loginRequestDto.email },
-      select: [
-        'id',
-        'password',
-        'createdAt',
-        'updatedAt',
-        'email',
-        'fullName',
-        'role',
-      ],
+      select: ['id', 'password', 'email', 'fullName', 'role'],
       relations: ['role'],
     });
     if (!user) {
@@ -89,9 +78,6 @@ export class AuthService {
     );
     console.log({
       user,
-      isValidPassword,
-      loginRequestDtoPassword: loginRequestDto.password,
-      userPassword: user.password,
     });
 
     if (!isValidPassword) {
@@ -108,27 +94,14 @@ export class AuthService {
     return { access_token: accessToken, refresh_token: refreshToken };
   }
 
-  async logout(tokenDto: Tokens): Promise<void> {
-    const existingRefreshToken = await this.refreshTokenRepository.findOne({
-      where: { refreshToken: tokenDto.refresh_token },
+  async logout(userId: string): Promise<void> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
     });
-    if (!existingRefreshToken) {
-      return;
-    }
-
-    const isTokenValid = this.checkValidAccessToken(
-      tokenDto.access_token,
-      existingRefreshToken.userId,
-      existingRefreshToken.jwtTokenId,
-    );
-    if (!isTokenValid) {
-      return;
-    }
-
-    await this.markAllTokenInChainAsInvalid(
-      existingRefreshToken.userId,
-      existingRefreshToken.jwtTokenId,
-    );
+    user.accessToken = null;
+    user.refreshToken = null;
+    user.refreshTokenExp = null;
+    await this.userRepo.save(user);
   }
 
   async getUserFromToken(token: string): Promise<User | null> {
@@ -156,40 +129,6 @@ export class AuthService {
     }
   }
 
-  private checkValidAccessToken(
-    accessToken: string,
-    expectedUserId: string,
-    storedAccessToken: string,
-  ): boolean {
-    // check body access token vs stored access token
-    // check user id in access token vs stored user id
-    try {
-      const decoded = this.jwtService.verify(accessToken, {
-        secret: this.config.get<string>('ACCESS_TOKEN_SECRET'),
-      });
-      return (
-        decoded.sub === expectedUserId && accessToken === storedAccessToken
-      );
-    } catch {
-      return false;
-    }
-  }
-
-  private async markTokenAsInvalid(refreshToken: RefreshToken): Promise<void> {
-    refreshToken.isValid = false;
-    await this.refreshTokenRepository.save(refreshToken);
-  }
-
-  private async markAllTokenInChainAsInvalid(
-    userId: string,
-    tokenId: string,
-  ): Promise<void> {
-    await this.refreshTokenRepository.update(
-      { userId, jwtTokenId: tokenId },
-      { isValid: false },
-    );
-  }
-
   private async createNewRefreshToken(
     userId: string,
     tokenId: string,
@@ -199,91 +138,85 @@ export class AuthService {
     if (!rfDuration || isNaN(Number(rfDuration))) {
       throw new ForbiddenException('Secrets not found');
     }
-    const refreshToken = this.refreshTokenRepository.create({
-      userId,
-      jwtTokenId: tokenId,
-      refreshToken: `${uuidv4()}-${uuidv4()}`,
-      isValid: true,
-      expiresAt: new Date(date.getTime() + Number(rfDuration) * 60000),
-    });
-
-    await this.refreshTokenRepository.save(refreshToken);
-    return refreshToken.refreshToken;
-  }
-
-  async refreshAccessToken(tokenDto: Tokens): Promise<Tokens> {
-    const existingRefreshToken = await this.refreshTokenRepository.findOne({
-      where: { refreshToken: tokenDto.refresh_token },
-    });
-    if (!existingRefreshToken) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const isTokenValid = this.checkValidAccessToken(
-      tokenDto.access_token,
-      existingRefreshToken.userId,
-      existingRefreshToken.jwtTokenId,
-    );
-    if (!isTokenValid) {
-      await this.markTokenAsInvalid(existingRefreshToken);
-      throw new UnauthorizedException('Invalid access token');
-    }
-
-    if (!existingRefreshToken.isValid) {
-      await this.markAllTokenInChainAsInvalid(
-        existingRefreshToken.userId,
-        existingRefreshToken.jwtTokenId,
-      );
-      throw new UnauthorizedException('Refresh token is no longer valid');
-    }
-
-    if (existingRefreshToken.expiresAt < new Date()) {
-      await this.markTokenAsInvalid(existingRefreshToken);
-      throw new UnauthorizedException('Refresh token has expired');
-    }
-
-    const rfSecret = await this.config.get('REFRESH_TOKEN_SECRET');
-    const rfDuration = await this.config.get('REFRESH_TOKEN_DURATION');
-    if (!rfSecret || !rfDuration) {
-      throw new ForbiddenException('Secrets not found');
-    }
-
-    const user1 = await this.userRepo.findOneBy({
-      id: existingRefreshToken.userId,
-    });
-    if (!user1) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const newRefreshToken = await this.createNewRefreshToken(
-      existingRefreshToken.userId,
-      existingRefreshToken.jwtTokenId,
-    );
-    await this.markTokenAsInvalid(existingRefreshToken);
-
     const user = await this.userRepo.findOne({
-      where: { id: existingRefreshToken.userId },
+      where: { id: userId },
     });
+
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    const token = `${uuidv4()}-${uuidv4()}`;
+    user.refreshToken = token;
+    user.refreshTokenExp = new Date(
+      date.getTime() + Number(rfDuration) * 60000,
+    ).toDateString();
+    await this.userRepo.save(user);
+    return token;
+  }
 
-    const newAccessToken = await this.createAccessToken(user);
+  async refreshAccessToken(tokenDto: Tokens): Promise<Tokens> {
+    const userData = await this.userRepo.findOne({
+      where: { refreshToken: tokenDto.refresh_token },
+      select: [
+        'id',
+        'refreshTokenExp',
+        'accessToken',
+        'email',
+        'fullName',
+        'role',
+      ],
+    });
+    if (!userData) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (new Date(userData.refreshTokenExp) < new Date()) {
+      await this.userRepo.update(
+        { id: userData.id },
+        { accessToken: null, refreshToken: null, refreshTokenExp: null },
+      );
+      throw new UnauthorizedException(
+        'Refresh token has expired. Please login',
+      );
+    }
+    const checkValidAccessToken =
+      userData.accessToken === tokenDto.access_token;
+    if (!checkValidAccessToken) {
+      throw new UnauthorizedException('Invalid access token');
+    }
+
+    const newAccessToken = await this.createAccessToken(userData);
+    const newRefreshToken = await this.createNewRefreshToken(
+      userData.id.toString(),
+      newAccessToken,
+    );
 
     return { access_token: newAccessToken, refresh_token: newRefreshToken };
   }
 
-  // async updateRtHash(userId: number, rt: string): Promise<void> {
-  //   const hash = await argon.hash(rt);
-  //   await this.prisma.user.update({
-  //     where: {
-  //       id: userId,
-  //     },
-  //     data: {
-  //       hashedRt: hash,
-  //     },
-  //   });
-  // }
+  public async validRefreshToken(
+    email: string,
+    refreshToken: string,
+  ): Promise<any> {
+    let user = await this.userRepo.findOne({
+      where: {
+        email: email,
+        refreshToken: refreshToken,
+      },
+      select: ['id', 'fullName', 'email', 'refreshTokenExp'],
+    });
+
+    if (!user || new Date(user.refreshTokenExp) < new Date()) {
+      user.accessToken = null;
+      user.refreshToken = null;
+      user.refreshTokenExp = null;
+      await this.userRepo.save(user);
+      return null;
+    }
+
+    return user;
+  }
+
   private async createAccessToken(user: User): Promise<string> {
     const payload = {
       email: user.email,

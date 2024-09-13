@@ -1,34 +1,72 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+  Put,
+  HttpCode,
+  HttpStatus,
+  Inject,
+} from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateStatusTaskDTO } from './dto/update-task-status.dto';
+import { AssignTaskDTO } from './dto/assign-task.dto';
 
 @Controller('task')
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
-  create(@Body() createTaskDto: CreateTaskDto) {
-    return this.taskService.create(createTaskDto);
+  async create(@Body() createTaskDto: CreateTaskDto) {
+    await this.taskService.createTaskValidator(createTaskDto);
+    await this.taskService.createTask(createTaskDto);
+    return { message: 'Task created' };
   }
 
-  @Get()
-  findAll() {
-    return this.taskService.findAll();
+  @Get(':roomId')
+  async getRoomTasks(@Param('roomId') roomId: string) {
+    const data = await this.taskService.getAllTasksOfRoom(roomId);
+    return { data };
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.taskService.findOne(+id);
+  @Get(':roomId/:userId')
+  async getRoomUserTasks(
+    @Param('roomId') roomId: string,
+    @Param('userId') userId: string,
+  ) {
+    const data = await this.taskService.getTasksOfRoomUser(roomId, userId);
+    return { data };
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTaskDto: UpdateTaskDto) {
-    return this.taskService.update(+id, updateTaskDto);
+  @Patch('update-status')
+  async updateStatus(@Body() updateTaskDto: UpdateStatusTaskDTO, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new Error('User not found');
+    }
+    await this.taskService.updateStatusTaskValidator(curUserId, updateTaskDto);
+    await this.taskService.updateStatusTask(updateTaskDto);
+    return { message: 'Task status updated' };
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.taskService.remove(+id);
+  @Put('assign')
+  @HttpCode(HttpStatus.OK)
+  async assignTask(@Body() assignTaskDto: AssignTaskDTO, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new Error('User not found');
+    }
+    await this.taskService.assignTaskValidator(
+      curUserId,
+      assignTaskDto.taskId,
+      assignTaskDto.userId,
+    );
+    await this.taskService.assignTask(assignTaskDto.taskId, curUserId);
+    return { message: 'Task assigned' };
   }
 }

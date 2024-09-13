@@ -28,4 +28,18 @@ export class User extends AbstractEntity<User> {
 
   @OneToMany(() => Task, (task) => task.user)
   tasks: Task[];
+
+  @Column({ nullable: true, name: 'accesstoken', select: false })
+  accessToken: string;
+
+  @Column({ nullable: true, name: 'refreshtoken', select: false })
+  refreshToken: string;
+
+  @Column({
+    type: 'date',
+    nullable: true,
+    name: 'refreshtokenexp',
+    select: false,
+  })
+  refreshTokenExp: string;
 }
