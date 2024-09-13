@@ -23,10 +23,12 @@ export class RoomService implements RoomServiceInterface {
   async getAllRooms(userId: string) {
     // left join will get all rooms
     // userRoom.userId = :userId will get the rooms that the user joined
+
     const rooms = await this.roomRepository
       .createQueryBuilder('room')
-      .leftJoin('room.userRooms', 'userRoom')
-      .where('userRoom.userId = :userId', { userId })
+      .leftJoin('room.userRooms', 'userRoom', 'userRoom.userId = :userId', {
+        userId,
+      })
       .select([
         'room.id as room_id',
         'room.name as room_name',
@@ -34,12 +36,13 @@ export class RoomService implements RoomServiceInterface {
         'CASE WHEN userRoom.userId IS NOT NULL THEN TRUE ELSE FALSE END as isJoined',
       ])
       .getRawMany();
+    // console.log(rooms);
 
     return rooms.map((room) => ({
       id: room.room_id,
       name: room.room_name,
       description: room.room_description,
-      isJoined: room.isJoined === 'true', // Convert the string to a boolean
+      isJoined: room.isjoined, // Convert the string to a boolean
     }));
   }
 
@@ -126,7 +129,7 @@ export class RoomService implements RoomServiceInterface {
     });
   }
 
-  addMemberValidator(ownerId: string, email: string, roomId: string) {
+  async addMemberValidator(ownerId: string, email: string, roomId: string) {
     // check if user is exist
     if (!this.userRepo.findOne({ where: { email } })) {
       throw new Error('User not found');

@@ -10,10 +10,17 @@ export interface RoomServiceInterface {
   isRoomExist(roomId: string); // check if user is room
   createRoom(creatorId: string, room: CreateRoomDto);
   updateRoom(room: UpdateRoomDto);
+
   removeRoomValidator(ownerId: string, roomId: string);
   removeRoom(roomId: string);
-  addMemberValidator(ownerId: string, email: string, roomId: string);
+
+  addMemberValidator(
+    ownerId: string,
+    email: string,
+    roomId: string,
+  ): Promise<void>;
   addMember(email: string, roomId: string);
+
   removeMemberValidator(
     ownerId: string,
     userId: string,

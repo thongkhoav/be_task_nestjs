@@ -21,11 +21,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
           let data =
             request?.cookies[this.config.get('COOKIE_AUTH', 'Authentication')];
-          // console.log({ data });
+          console.log({ data });
 
           if (!data) {
             return null;
           }
+          data = JSON.parse(data);
+
           return data.access_token;
         },
       ]),
@@ -35,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
-    console.log({ payload });
+    console.log('validate jwt', payload);
 
     const user = await this.authService.getUserById(payload.sub);
     return user;

@@ -29,11 +29,12 @@ export class RoomController {
   }
 
   @Get('/:roomId/users')
-  getUserOfRoom(
+  async getUserOfRoom(
     @Param('roomId') roomId: string,
     @Query('includeOwner') includeOwner: boolean,
   ) {
-    return this.roomService.getUserOfRoom(roomId, includeOwner);
+    const data = await this.roomService.getUserOfRoom(roomId, includeOwner);
+    return { data };
   }
 
   @Post('/:rooomId/add-member')
@@ -78,19 +79,20 @@ export class RoomController {
   }
 
   @Get()
-  getAllRooms(@Req() req) {
+  async getAllRooms(@Req() req) {
     const userId = req?.user?.id;
 
     if (!userId) {
       throw new Error('User not found');
     }
-
-    return this.roomService.getAllRooms(userId);
+    const data = await this.roomService.getAllRooms(userId);
+    return { data };
   }
 
   @Get('/:roomId')
-  getRoomById(@Param('roomId') roomId: string) {
-    return this.roomService.getRoomById(roomId);
+  async getRoomById(@Param('roomId') roomId: string) {
+    const data = await this.roomService.getRoomById(roomId);
+    return { data };
   }
 
   // @Get(':id')
