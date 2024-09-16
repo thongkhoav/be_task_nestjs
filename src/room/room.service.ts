@@ -20,6 +20,48 @@ export class RoomService implements RoomServiceInterface {
     private entityManager: EntityManager,
   ) {}
 
+  async isRoomMemberById(roomId: string, userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      return false;
+    }
+    const userRoom = await this.userRoomRepo.findOne({
+      where: { user: { id: user.id }, room: { id: roomId } },
+    });
+    console.log({
+      roomId,
+      userId,
+    });
+    console.log(userRoom);
+
+    return !!userRoom;
+  }
+
+  async joinRoomValidator(userId: string, roomId: string) {
+    // check if room is exist
+    if (!this.roomRepository.findOne({ where: { id: roomId } })) {
+      throw new Error('Room not found');
+    }
+
+    // check if user is exist
+    if (!this.userRepo.findOne({ where: { id: userId } })) {
+      throw new Error('User not found');
+    }
+
+    // check if user is already a member of the room
+    if (!this.isRoomMemberById(roomId, userId)) {
+      throw new Error('User is already a member of the room');
+    }
+  }
+
+  async joinRoom(userId: string, roomId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const room = await this.roomRepository.findOne({ where: { id: roomId } });
+    const userRoom = new UserRoom({ user, room });
+    userRoom.isOwner = false;
+    await this.userRoomRepo.save(userRoom);
+  }
+
   async getAllRooms(userId: string) {
     // left join will get all rooms
     // userRoom.userId = :userId will get the rooms that the user joined
@@ -234,11 +276,59 @@ export class RoomService implements RoomServiceInterface {
     }
   }
 
-  getUserOfRoom(roomId: string, includeOwner: boolean) {
-    var query = this.userRoomRepo.find({
-      where: { id: roomId, isOwner: includeOwner },
+  async getUserOfRoom(roomId: string, includeOwner: boolean) {
+    //   const query = this.userRoomRepo.createQueryBuilder('userRoom')
+    //   .innerJoinAndSelect('userRoom.user', 'user')
+    //   .where('userRoom.room.id = :roomId', { roomId })
+    //   .select([
+    //     'userRoom.id',
+    //     'userRoom.isOwner',
+    //     'user.id',
+    //     'user.email',
+    //     'user.fullName'
+    //   ])
+    //   .orderBy('userRoom.isOwner', 'DESC')
+    //   .addOrderBy('user.fullName', 'ASC');
+
+    // if (!includeOwner) {
+    //   query.andWhere('userRoom.isOwner = :isOwner', { isOwner: false });
+    // }
+
+    // const result = await query.getMany();
+
+    var query = await this.userRoomRepo.find({
+      where: { room: { id: roomId } },
       relations: ['user'],
+      select: {
+        user: {
+          id: true,
+          email: true,
+          fullName: true,
+        },
+        isOwner: true,
+      },
     });
-    return query;
+    if (!includeOwner) {
+      query = query.filter((userRoom) => !userRoom.isOwner);
+    }
+    const sortedResult = query
+      .sort((a, b) => {
+        // Sort by isOwner (true comes first)
+        if (a.isOwner && !b.isOwner) return -1;
+        if (!a.isOwner && b.isOwner) return 1;
+
+        // If isOwner is the same, sort alphabetically by fullName
+        return a.user.fullName.localeCompare(b.user.fullName);
+      })
+      .map((userRoom) => ({
+        id: userRoom.id,
+        isOwner: userRoom.isOwner,
+        user: {
+          id: userRoom.user.id,
+          email: userRoom.user.email,
+          fullName: userRoom.user.fullName,
+        },
+      }));
+    return sortedResult;
   }
 }

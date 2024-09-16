@@ -4,7 +4,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 
 export interface TaskServiceInterface {
   getAllTasksOfRoom(roomId: string): Promise<any[]>; // string for GUIDs
-  getTasksOfRoomUser(roomId: string, userId: string): Promise<any[]>;
+  getTasksOfRoom(roomId: string, userId: string): Promise<any[]>;
 
   createTaskValidator(task: CreateTaskDto): Promise<void>;
   createTask(task: CreateTaskDto): Promise<boolean>;

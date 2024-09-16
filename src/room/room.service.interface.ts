@@ -7,6 +7,7 @@ export interface RoomServiceInterface {
   getRoomById(roomId: string);
   isRoomCreator(userId: string, roomId: string); // check if user is room
   isRoomMember(roomId: string, email: string);
+  isRoomMemberById(roomId: string, userId: string);
   isRoomExist(roomId: string); // check if user is room
   createRoom(creatorId: string, room: CreateRoomDto);
   updateRoom(room: UpdateRoomDto);
@@ -28,4 +29,7 @@ export interface RoomServiceInterface {
     removeAll: boolean,
   );
   removeMember(userId: string, roomId: string, removeAll: boolean);
+
+  joinRoomValidator(userId: string, roomId: string);
+  joinRoom(userId: string, roomId: string);
 }

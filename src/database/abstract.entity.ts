@@ -20,10 +20,6 @@ export class AbstractEntity<T> {
   })
   updatedAt: Date;
 
-  // is deleted column
-  @Column({ default: false })
-  isDeleted: boolean;
-
   @DeleteDateColumn({ select: false })
   deletedDate?: Date;
 

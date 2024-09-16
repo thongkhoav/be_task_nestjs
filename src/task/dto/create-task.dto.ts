@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateTaskDto {
@@ -11,6 +12,7 @@ export class CreateTaskDto {
 
   @IsNotEmpty()
   @IsDate()
+  @Type(() => Date)
   dueDate: Date;
 
   @IsNotEmpty()

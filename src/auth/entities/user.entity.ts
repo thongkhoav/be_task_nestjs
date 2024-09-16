@@ -7,18 +7,18 @@ import { Role } from './role.entity';
 @Entity()
 export class User extends AbstractEntity<User> {
   @Column()
-  email: string = '';
+  email: string;
 
   // password
   @Column({ select: false })
-  password: string = '';
+  password: string;
 
-  @Column({ default: false })
-  isVerified: boolean = false;
+  @Column({ default: false, select: false })
+  isVerified: boolean;
 
   // full name
   @Column()
-  fullName: string = '';
+  fullName: string;
 
   @ManyToOne(() => Role, (role) => role.users)
   role: Role; // Foreign key to Role

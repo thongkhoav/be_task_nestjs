@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Query,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -31,18 +32,12 @@ export class TaskController {
     return { message: 'Task created' };
   }
 
-  @Get(':roomId')
-  async getRoomTasks(@Param('roomId') roomId: string) {
-    const data = await this.taskService.getAllTasksOfRoom(roomId);
-    return { data };
-  }
-
-  @Get(':roomId/:userId')
+  @Get('room/:roomId')
   async getRoomUserTasks(
     @Param('roomId') roomId: string,
-    @Param('userId') userId: string,
+    @Query('userId') userId: string,
   ) {
-    const data = await this.taskService.getTasksOfRoomUser(roomId, userId);
+    const data = await this.taskService.getTasksOfRoom(roomId, userId);
     return { data };
   }
 
@@ -56,6 +51,12 @@ export class TaskController {
     await this.taskService.updateStatusTask(updateTaskDto);
     return { message: 'Task status updated' };
   }
+
+  // @Get(':roomId')
+  // async getRoomTasks(@Param('roomId') roomId: string) {
+  //   const data = await this.taskService.getAllTasksOfRoom(roomId);
+  //   return { data };
+  // }
 
   @Put('assign')
   @HttpCode(HttpStatus.OK)

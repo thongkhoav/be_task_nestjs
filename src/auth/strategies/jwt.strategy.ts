@@ -26,7 +26,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
           if (!data) {
             return null;
           }
-          data = JSON.parse(data);
+          // data = JSON.parse(data);
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+          }
 
           return data.access_token;
         },

@@ -13,10 +13,10 @@ export enum TaskStatus {
 @Entity()
 export class Task extends AbstractEntity<Task> {
   @Column()
-  title: string = '';
+  title: string;
 
   @Column()
-  description: string = '';
+  description: string;
 
   @Column()
   dueDate: Date;
@@ -24,8 +24,8 @@ export class Task extends AbstractEntity<Task> {
   @Column({ default: TaskStatus.TODO })
   status: string = TaskStatus.TODO;
 
-  @Column()
-  review: string = '';
+  @Column({ nullable: true })
+  review: string;
 
   @ManyToOne(() => User, (user) => user.tasks, { nullable: true })
   user: User;

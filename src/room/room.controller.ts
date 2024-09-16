@@ -17,6 +17,18 @@ import { UpdateRoomDto } from './dto/update-room.dto';
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
+  @Post('/:roomId/join')
+  async joinRoom(@Param('roomId') roomId: string, @Req() req) {
+    const userId = req?.user?.id;
+
+    if (!userId) {
+      throw new Error('User not found');
+    }
+    await this.roomService.joinRoomValidator(userId, roomId);
+    await this.roomService.joinRoom(userId, roomId);
+    return { message: 'Joined room' };
+  }
+
   @Post()
   createRoom(@Body() createRoomDto: CreateRoomDto, @Req() req) {
     console.log(req?.user);
@@ -31,9 +43,12 @@ export class RoomController {
   @Get('/:roomId/users')
   async getUserOfRoom(
     @Param('roomId') roomId: string,
-    @Query('includeOwner') includeOwner: boolean,
+    @Query('includeOwner') includeOwner: string = 'true',
   ) {
-    const data = await this.roomService.getUserOfRoom(roomId, includeOwner);
+    const includeOwnerBool = includeOwner.toLowerCase() === 'true';
+    console.log({ roomId, includeOwner });
+
+    const data = await this.roomService.getUserOfRoom(roomId, includeOwnerBool);
     return { data };
   }
 

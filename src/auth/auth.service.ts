@@ -222,6 +222,7 @@ export class AuthService {
       email: user.email,
       sub: user.id,
       role: user.role.title,
+      fullName: user.fullName,
     };
 
     return await this.jwtService.signAsync(payload, {

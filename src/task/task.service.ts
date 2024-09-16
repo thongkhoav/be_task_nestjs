@@ -69,10 +69,31 @@ export class TaskService implements TaskServiceInterface {
     return tasks;
   }
 
-  async getTasksOfRoomUser(roomId: string, userId: string): Promise<any[]> {
-    return await this.taskRepository.find({
-      where: { room: { id: roomId }, user: { id: userId } },
+  async getTasksOfRoom(roomId: string, userId: string): Promise<any[]> {
+    let tasks;
+    let whereOption: any = { room: { id: roomId } };
+    if (userId) {
+      whereOption = { ...whereOption, user: { id: userId } };
+    }
+    tasks = await this.taskRepository.find({
+      where: whereOption,
+      relations: ['user'],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        dueDate: true,
+        status: true,
+        review: true,
+        user: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
     });
+    console.log('room tasks', tasks);
+    return tasks;
   }
 
   async createTaskValidator(task: CreateTaskDto): Promise<void> {
@@ -130,7 +151,9 @@ export class TaskService implements TaskServiceInterface {
     if (room) {
       newTask.room = room;
     }
-    await this.taskRepository.save(task);
+    console.log(newTask);
+
+    await this.taskRepository.save(newTask);
     console.log('Task created');
     return true;
   }
