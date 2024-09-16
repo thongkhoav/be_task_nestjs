@@ -71,13 +71,18 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req, @Body() dto: Tokens): Promise<string> {
+  async logout(
+    @Req() req,
+    @Res({ passthrough: true }) res,
+    @Body() dto: Tokens,
+  ): Promise<string> {
     try {
       const curUserId = req?.user?.id;
       if (!curUserId) {
         throw new BadRequestException('User not found');
       }
       await this.authService.logout(curUserId);
+      res.clearCookie(this.config.get('COOKIE_AUTH', 'Authentication'));
       return 'Logged out';
     } catch (error) {
       throw new BadRequestException(error.message);

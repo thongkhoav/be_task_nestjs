@@ -198,6 +198,7 @@ export class TaskService implements TaskServiceInterface {
     // check if task exists
     const existTask = await this.taskRepository.findOne({
       where: { id: task.taskId },
+      relations: ['room', 'user'],
     });
 
     if (!existTask) {
@@ -208,6 +209,7 @@ export class TaskService implements TaskServiceInterface {
     if (!Object.values(TaskStatus).includes(task.status)) {
       throw new Error('Status is invalid');
     }
+    console.log('existTask', existTask);
 
     const userRoom = await this.userRoomRepository.findOne({
       where: { user: { id: userId }, room: { id: existTask.room.id } },
