@@ -13,21 +13,30 @@ import {
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { JoinRoomDto } from './dto/join-room.dto';
 
 @Controller({ version: '1', path: 'room' })
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
-  @Post('/:roomId/join')
-  async joinRoom(@Param('roomId') roomId: string, @Req() req) {
+  @Post('/join-by-invite')
+  async joinRoom(
+    @Body()
+    dto: JoinRoomDto,
+    @Req() req,
+  ) {
     const userId = req?.user?.id;
 
     if (!userId) {
       throw new NotFoundException('User not found');
     }
-    await this.roomService.joinRoomValidator(userId, roomId);
-    await this.roomService.joinRoom(userId, roomId);
-    return { message: 'Joined room' };
+    await this.roomService.joinRoomValidator(userId, dto.inviteCode);
+    const roomId = await this.roomService.joinRoom(userId, dto.inviteCode);
+    return {
+      data: {
+        roomId,
+      },
+    };
   }
 
   @Post()

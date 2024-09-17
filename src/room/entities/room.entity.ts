@@ -13,13 +13,13 @@ import {
 @Entity()
 export class Room extends AbstractEntity<Room> {
   @Column()
-  name: string = '';
+  name: string;
 
   @Column()
-  description: string = '';
+  description: string;
 
-  @Column({ type: 'int', generated: 'increment' })
-  inviteCode: number;
+  @Column({ unique: true, nullable: false })
+  inviteCode: string;
 
   @OneToMany(() => UserRoom, (userRoom) => userRoom.room)
   userRooms: UserRoom[];

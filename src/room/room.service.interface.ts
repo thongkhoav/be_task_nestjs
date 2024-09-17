@@ -30,6 +30,6 @@ export interface RoomServiceInterface {
   );
   removeMember(userId: string, roomId: string, removeAll: boolean);
 
-  joinRoomValidator(userId: string, roomId: string);
-  joinRoom(userId: string, roomId: string);
+  joinRoomValidator(userId: string, inviteCode: string);
+  joinRoom(userId: string, inviteCode: string);
 }

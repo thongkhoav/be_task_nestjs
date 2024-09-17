@@ -12,6 +12,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { RoomServiceInterface } from './room.service.interface';
 import { User } from 'src/auth/entities/user.entity';
+import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class RoomService implements RoomServiceInterface {
@@ -23,6 +25,7 @@ export class RoomService implements RoomServiceInterface {
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private entityManager: EntityManager,
+    private configService: ConfigService,
   ) {}
 
   async isRoomMemberById(roomId: string, userId: string) {
@@ -42,9 +45,21 @@ export class RoomService implements RoomServiceInterface {
     return !!userRoom;
   }
 
-  async joinRoomValidator(userId: string, roomId: string) {
+  async joinRoomValidator(userId: string, inviteCode: string) {
+    if (
+      !inviteCode.startsWith(
+        this.configService.get<string>('INVITE_PREFIX', 'task_app/invite'),
+      )
+    ) {
+      throw new BadRequestException('Invalid invite code');
+    }
+    const uuidInviteCode = inviteCode.split('/').pop();
+
     // check if room is exist
-    if (!(await this.roomRepository.findOne({ where: { id: roomId } }))) {
+    const existingRoom = await this.roomRepository.findOne({
+      where: { inviteCode: uuidInviteCode },
+    });
+    if (!existingRoom) {
       throw new BadRequestException('Room not found');
     }
 
@@ -54,47 +69,52 @@ export class RoomService implements RoomServiceInterface {
     }
 
     // check if user is already a member of the room
-    if (!(await this.isRoomMemberById(roomId, userId))) {
+    if (await this.isRoomMemberById(existingRoom.id, userId)) {
       throw new BadRequestException('User is already a member of the room');
     }
   }
 
-  async joinRoom(userId: string, roomId: string) {
+  async joinRoom(userId: string, inviteCode: string) {
+    const uuidInviteCode = inviteCode.split('/').pop();
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    const room = await this.roomRepository.findOne({ where: { id: roomId } });
-    const userRoom = new UserRoom({ user, room });
+    const existingRoom = await this.roomRepository.findOne({
+      where: { inviteCode: uuidInviteCode },
+    });
+    const userRoom = new UserRoom({ user, room: existingRoom });
     userRoom.isOwner = false;
     await this.userRoomRepo.save(userRoom);
+    return existingRoom.id;
   }
 
+  // change get all rooms to get rooms that the user joined
   async getAllRooms(userId: string) {
     // left join will get all rooms
     // userRoom.userId = :userId will get the rooms that the user joined
 
-    const rooms1 = await this.roomRepository
-      .createQueryBuilder('room')
-      // Join userRoom to get all relationships between rooms and users
-      .leftJoin('room.userRooms', 'userRoom')
-      // Join userRoom for the owner of the room
-      .leftJoin('userRoom.user', 'owner')
-      // Left join to check if the current user has joined the room
-      .leftJoin(
-        'room.userRooms',
-        'currentUserRoom',
-        'currentUserRoom.userId = :userId',
-        { userId },
-      )
-      .select([
-        'room.id as room_id',
-        'room.name as room_name',
-        'room.description as room_description',
-        'owner.id as owner_id',
-        'owner.fullName as owner_name',
-        'CASE WHEN currentUserRoom.userId IS NOT NULL THEN TRUE ELSE FALSE END as isJoined',
-      ])
-      .where('userRoom.isOwner = TRUE') // Get only the owner by checking isOwner field
-      .getRawMany();
-    console.log(rooms1);
+    // const rooms1 = await this.roomRepository
+    //   .createQueryBuilder('room')
+    //   // Join userRoom to get all relationships between rooms and users
+    //   .leftJoin('room.userRooms', 'userRoom')
+    //   // Join userRoom for the owner of the room
+    //   .leftJoin('userRoom.user', 'owner')
+    //   // Left join to check if the current user has joined the room
+    //   .leftJoin(
+    //     'room.userRooms',
+    //     'currentUserRoom',
+    //     'currentUserRoom.userId = :userId',
+    //     { userId },
+    //   )
+    //   .select([
+    //     'room.id as room_id',
+    //     'room.name as room_name',
+    //     'room.description as room_description',
+    //     'owner.id as owner_id',
+    //     'owner.fullName as owner_name',
+    //     'CASE WHEN currentUserRoom.userId IS NOT NULL THEN TRUE ELSE FALSE END as isJoined',
+    //   ])
+    //   .where('userRoom.isOwner = TRUE') // Get only the owner by checking isOwner field
+    //   .getRawMany();
+    // console.log(rooms1);
 
     // const rooms = await this.roomRepository
     //   .createQueryBuilder('room')
@@ -109,17 +129,39 @@ export class RoomService implements RoomServiceInterface {
     //   ])
     //   .getRawMany();
     // console.log(rooms);
+    // return rooms1.map((room) => ({
+    //   id: room.room_id,
+    //   name: room.room_name,
+    //   description: room.room_description,
+    //   owner: {
+    //     id: room.owner_id,
+    //     fullName: room.owner_name,
+    //   },
+    //   isJoined: room.isjoined, // Convert the string to a boolean
+    // }));
 
-    return rooms1.map((room) => ({
-      id: room.room_id,
-      name: room.room_name,
-      description: room.room_description,
-      owner: {
-        id: room.owner_id,
-        fullName: room.owner_name,
-      },
-      isJoined: room.isjoined, // Convert the string to a boolean
-    }));
+    // get user room and owner of the room
+    // get all rooms that the user joined
+    // relations back to room ->  userRooms -> user to get the owner of the room
+    const userRooms = await this.userRoomRepo.find({
+      where: { user: { id: userId } },
+      relations: ['room', 'room.userRooms', 'room.userRooms.user'],
+    });
+    console.log(userRooms);
+
+    return userRooms.map((userRoom) => {
+      const room = userRoom.room;
+      const owner = room.userRooms.find((userRoom) => userRoom.isOwner);
+      return {
+        id: room.id,
+        name: room.name,
+        description: room.description,
+        owner: {
+          id: owner.user.id,
+          fullName: owner.user.fullName,
+        },
+      };
+    });
   }
 
   async getRoomById(roomId: string) {
@@ -138,6 +180,12 @@ export class RoomService implements RoomServiceInterface {
         email: user.user.email,
         fullName: user.user.fullName,
       },
+      inviteLink:
+        room.inviteCode &&
+        `${this.configService.get<string>(
+          'INVITE_PREFIX',
+          'task_app/invite',
+        )}/${room.inviteCode}`,
     };
   }
 
@@ -177,6 +225,7 @@ export class RoomService implements RoomServiceInterface {
       let newRoom = new Room(room);
       newRoom.name = room.name;
       newRoom.description = room.description;
+      newRoom.inviteCode = uuidv4();
       await manager.save(newRoom);
       userRoom.room = newRoom;
       await manager.save(userRoom);
