@@ -1,4 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskServiceInterface } from './task.service.interface';
@@ -35,7 +41,7 @@ export class TaskService implements TaskServiceInterface {
     });
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     // check current user is owner of the room
@@ -44,7 +50,7 @@ export class TaskService implements TaskServiceInterface {
     });
 
     if (!userRoom.isOwner) {
-      throw new Error('You are not allowed to assign task');
+      throw new UnauthorizedException('You are not allowed to assign task');
     }
 
     // check if user is in the room
@@ -53,7 +59,7 @@ export class TaskService implements TaskServiceInterface {
     });
 
     if (!userRoomAssign) {
-      throw new Error('User is not in the room');
+      throw new BadRequestException('User is not in the room');
     }
   }
 
@@ -99,7 +105,7 @@ export class TaskService implements TaskServiceInterface {
   async createTaskValidator(task: CreateTaskDto): Promise<void> {
     // check if dueDate is valid
     if (task.dueDate < new Date()) {
-      throw new Error('Due date is invalid');
+      throw new BadRequestException('Due date is invalid');
     }
 
     // check if room exists
@@ -107,7 +113,7 @@ export class TaskService implements TaskServiceInterface {
       where: { id: task.roomId },
     });
     if (!room) {
-      throw new Error('Room not found');
+      throw new NotFoundException('Room not found');
     }
 
     // check if user exists
@@ -116,7 +122,7 @@ export class TaskService implements TaskServiceInterface {
         where: { id: task.userId },
       });
       if (!user) {
-        throw new Error('User not found');
+        throw new NotFoundException('User not found');
       }
 
       // check if user is in the room
@@ -124,7 +130,7 @@ export class TaskService implements TaskServiceInterface {
         where: { user: { id: user.id }, room: { id: room.id } },
       });
       if (!userRoom) {
-        throw new Error('User is not in the room');
+        throw new BadRequestException('User is not in the room');
       }
     }
   }
@@ -158,13 +164,50 @@ export class TaskService implements TaskServiceInterface {
     return true;
   }
 
+  async updateTaskValidator(
+    taskId: string,
+    task: UpdateTaskDto,
+  ): Promise<void> {
+    // check if dueDate is valid
+    if (task.dueDate < new Date()) {
+      throw new BadRequestException('Due date is invalid');
+    }
+
+    // check if task exists
+    const existTask = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['room', 'user'],
+    });
+    if (!existTask) {
+      throw new NotFoundException('Task not found');
+    }
+
+    // check if user exists
+    if (task.userId) {
+      const user = await this.userRepository.findOne({
+        where: { id: task.userId },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // check if user is in the room
+      const userRoom = await this.userRoomRepository.findOne({
+        where: { user: { id: user.id }, room: { id: existTask.room.id } },
+      });
+      if (!userRoom) {
+        throw new BadRequestException('User is not in the room');
+      }
+    }
+  }
+
   async updateTask(taskId: string, task: UpdateTaskDto): Promise<void> {
     const existTask = await this.taskRepository.findOne({
       where: { id: taskId },
     });
 
     if (!existTask) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     await this.taskRepository.update(
@@ -184,7 +227,7 @@ export class TaskService implements TaskServiceInterface {
     });
 
     if (!existTask) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     // soft delete
@@ -202,21 +245,27 @@ export class TaskService implements TaskServiceInterface {
     });
 
     if (!existTask) {
-      throw new Error('Task not found');
+      throw new NotFoundException('Task not found');
     }
 
     // check if status is valid
     if (!Object.values(TaskStatus).includes(task.status)) {
-      throw new Error('Status is invalid');
+      throw new BadRequestException('Status is invalid');
     }
-    console.log('existTask', existTask);
+    // console.log('existTask', existTask);
 
     const userRoom = await this.userRoomRepository.findOne({
       where: { user: { id: userId }, room: { id: existTask.room.id } },
     });
+    // console.log('userRoom', {
+    //   user: { id: userId },
+    //   existTask,
+    //   userRoom,
+    // });
+
     // owner or assignee can update status
-    if (!(userRoom.isOwner && existTask.user.id === userId)) {
-      throw new Error('You are not allowed to update status');
+    if (!userRoom.isOwner && !(existTask.user.id === userId)) {
+      throw new UnauthorizedException('You are not allowed to update status');
     }
   }
 

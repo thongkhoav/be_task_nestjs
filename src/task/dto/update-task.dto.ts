@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsString } from 'class-validator';
 
 export class UpdateTaskDto {
@@ -11,9 +12,10 @@ export class UpdateTaskDto {
 
   @IsNotEmpty()
   @IsDate()
+  @Type(() => Date)
   dueDate: Date;
 
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   userId: string;
 }

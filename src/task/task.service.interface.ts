@@ -9,7 +9,9 @@ export interface TaskServiceInterface {
   createTaskValidator(task: CreateTaskDto): Promise<void>;
   createTask(task: CreateTaskDto): Promise<boolean>;
 
+  updateTaskValidator(taskId: string, task: UpdateTaskDto): Promise<void>;
   updateTask(taskId: string, task: UpdateTaskDto): Promise<void>;
+
   deleteTask(id: string): Promise<void>;
 
   assignTaskValidator(

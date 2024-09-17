@@ -17,6 +17,7 @@ import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateStatusTaskDTO } from './dto/update-task-status.dto';
 import { AssignTaskDTO } from './dto/assign-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Controller({
   version: '1',
@@ -32,6 +33,16 @@ export class TaskController {
     return { message: 'Task created' };
   }
 
+  @Patch(':taskId/update-task-info')
+  async updateTaskInfo(
+    @Param('taskId') taskId: string,
+    @Body() dto: UpdateTaskDto,
+  ) {
+    await this.taskService.updateTaskValidator(taskId, dto);
+    await this.taskService.updateTask(taskId, dto);
+    return { message: 'Task updated' };
+  }
+
   @Get('room/:roomId')
   async getRoomUserTasks(
     @Param('roomId') roomId: string,
@@ -42,13 +53,16 @@ export class TaskController {
   }
 
   @Patch('update-status')
-  async updateStatus(@Body() updateTaskDto: UpdateStatusTaskDTO, @Req() req) {
+  async updateStatus(@Body() updateStatusDto: UpdateStatusTaskDTO, @Req() req) {
     const curUserId = req?.user?.id;
     if (!curUserId) {
       throw new Error('User not found');
     }
-    await this.taskService.updateStatusTaskValidator(curUserId, updateTaskDto);
-    await this.taskService.updateStatusTask(updateTaskDto);
+    await this.taskService.updateStatusTaskValidator(
+      curUserId,
+      updateStatusDto,
+    );
+    await this.taskService.updateStatusTask(updateStatusDto);
     return { message: 'Task status updated' };
   }
 

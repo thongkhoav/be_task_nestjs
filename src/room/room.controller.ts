@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -22,7 +23,7 @@ export class RoomController {
     const userId = req?.user?.id;
 
     if (!userId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
     await this.roomService.joinRoomValidator(userId, roomId);
     await this.roomService.joinRoom(userId, roomId);
@@ -35,7 +36,7 @@ export class RoomController {
     const userId = req?.user?.id;
 
     if (!userId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
     return this.roomService.createRoom(userId, createRoomDto);
   }
@@ -61,7 +62,7 @@ export class RoomController {
     const curUserId = req?.user?.id;
 
     if (!curUserId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
 
     await this.roomService.addMemberValidator(curUserId, body.email, roomId);
@@ -77,7 +78,7 @@ export class RoomController {
     const curUserId = req?.user?.id;
 
     if (!curUserId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
 
     await this.roomService.removeMemberValidator(
@@ -98,7 +99,7 @@ export class RoomController {
     const userId = req?.user?.id;
 
     if (!userId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
     const data = await this.roomService.getAllRooms(userId);
     return { data };
@@ -124,7 +125,7 @@ export class RoomController {
   async removeRoom(@Param('roomId') roomId: string, @Req() req) {
     const curUserId = req?.user?.id;
     if (!curUserId) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
 
     await this.roomService.removeRoomValidator(curUserId, roomId);
