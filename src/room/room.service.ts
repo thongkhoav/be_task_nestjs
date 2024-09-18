@@ -14,6 +14,7 @@ import { RoomServiceInterface } from './room.service.interface';
 import { User } from 'src/auth/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class RoomService implements RoomServiceInterface {
@@ -26,6 +27,7 @@ export class RoomService implements RoomServiceInterface {
     private userRepo: Repository<User>,
     private entityManager: EntityManager,
     private configService: ConfigService,
+    private notificationService: NotificationService,
   ) {}
 
   async isRoomMemberById(roomId: string, userId: string) {
@@ -83,6 +85,18 @@ export class RoomService implements RoomServiceInterface {
     const userRoom = new UserRoom({ user, room: existingRoom });
     userRoom.isOwner = false;
     await this.userRoomRepo.save(userRoom);
+
+    const owner = await this.userRoomRepo.findOne({
+      where: { room: { id: existingRoom.id }, isOwner: true },
+      relations: ['user'],
+    });
+    if (!owner?.user?.id) return;
+
+    await this.notificationService.sendNotificationAndSave(
+      owner.user.id,
+      'New member joined room',
+      `${user.fullName} joined room ${existingRoom.name}`,
+    );
     return existingRoom.id;
   }
 
@@ -147,7 +161,7 @@ export class RoomService implements RoomServiceInterface {
       where: { user: { id: userId } },
       relations: ['room', 'room.userRooms', 'room.userRooms.user'],
     });
-    console.log(userRooms);
+    // console.log(userRooms);
 
     return userRooms.map((userRoom) => {
       const room = userRoom.room;

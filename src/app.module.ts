@@ -10,6 +10,9 @@ import { TaskModule } from './task/task.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AccessTokenGuard } from './common/guards/access-token.guard';
 import { UserModule } from './user/user.module';
+import { NotificationModule } from './notification/notification.module';
+import * as admin from 'firebase-admin';
+
 config();
 
 @Module({
@@ -20,6 +23,7 @@ config();
     RoomModule,
     TaskModule,
     UserModule,
+    NotificationModule,
   ],
   controllers: [],
   providers: [
@@ -29,4 +33,6 @@ config();
     },
   ],
 })
-export class AppModule {}
+export class AppModule {
+  constructor() {}
+}

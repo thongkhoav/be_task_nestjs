@@ -37,4 +37,10 @@ lerna-debug.log*
 .data
 /files
 .env
+.env.development
+.env.production
+.env.test
+.env.local
 /ormconfig.json
+
+serviceAccountKey.json

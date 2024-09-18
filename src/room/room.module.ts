@@ -5,10 +5,22 @@ import { Room } from './entities/room.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { User } from 'src/auth/entities/user.entity';
+import { NotificationService } from 'src/notification/notification.service';
+import { LoginSession } from 'src/auth/entities/login-session.entity';
+import { NotificationModule } from 'src/notification/notification.module';
+import { Notification } from 'src/notification/entities/notification.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Room, UserRoom, User])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Room,
+      UserRoom,
+      User,
+      LoginSession,
+      Notification,
+    ]),
+  ],
   controllers: [RoomController],
-  providers: [RoomService],
+  providers: [RoomService, NotificationService],
 })
 export class RoomModule {}

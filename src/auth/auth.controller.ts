@@ -81,7 +81,11 @@ export class AuthController {
       if (!curUserId) {
         throw new BadRequestException('User not found');
       }
-      await this.authService.logout(curUserId);
+      await this.authService.logout(
+        curUserId,
+        dto.refresh_token,
+        dto.access_token,
+      );
       res.clearCookie(this.config.get('COOKIE_AUTH', 'Authentication'));
       return 'Logged out';
     } catch (error) {

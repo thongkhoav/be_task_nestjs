@@ -14,6 +14,7 @@ const bcrypt = require('bcrypt');
 import { v4 as uuidv4 } from 'uuid';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { Role, RoleType } from './entities/role.entity';
+import { LoginSession } from './entities/login-session.entity';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,8 @@ export class AuthService {
     private userRepo: Repository<User>,
     @InjectRepository(Role)
     private roleRepo: Repository<Role>,
+    @InjectRepository(LoginSession)
+    private loginSessionRepository: Repository<LoginSession>,
     private jwtService: JwtService,
     private config: ConfigService,
     private dataSource: DataSource,
@@ -86,22 +89,33 @@ export class AuthService {
     }
 
     const accessToken = await this.createAccessToken(user);
-    const refreshToken = await this.createNewRefreshToken(
+    const [refreshToken, refreshTokenExp] = await this.createNewRefreshToken(
       user.id.toString(),
       accessToken,
     );
+    const newLoginSession = new LoginSession({
+      user,
+      accessToken,
+      refreshToken,
+      refreshTokenExp,
+    });
+    await this.loginSessionRepository.save(newLoginSession);
 
     return { access_token: accessToken, refresh_token: refreshToken };
   }
 
-  async logout(userId: string): Promise<void> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
+  async logout(
+    userId: string,
+    refreshToken: string,
+    accessToken: string,
+  ): Promise<void> {
+    const loginSession = await this.loginSessionRepository.findOne({
+      where: { refreshToken, accessToken, user: { id: userId } },
     });
-    user.accessToken = null;
-    user.refreshToken = null;
-    user.refreshTokenExp = null;
-    await this.userRepo.save(user);
+    if (!loginSession) {
+      throw new UnauthorizedException('Invalid token');
+    }
+    await this.loginSessionRepository.softRemove(loginSession);
   }
 
   async getUserFromToken(token: string): Promise<User | null> {
@@ -131,65 +145,61 @@ export class AuthService {
 
   private async createNewRefreshToken(
     userId: string,
-    tokenId: string,
-  ): Promise<string> {
+    accessToken: string,
+  ): Promise<[string, Date]> {
     const date = new Date();
     const rfDuration = await this.config.get('REFRESH_TOKEN_DURATION');
     if (!rfDuration || isNaN(Number(rfDuration))) {
       throw new ForbiddenException('Secrets not found');
     }
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-    });
+    const refreshToken = `${uuidv4()}-${uuidv4()}`;
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-    const token = `${uuidv4()}-${uuidv4()}`;
-    user.refreshToken = token;
-    user.refreshTokenExp = new Date(
+    const refreshTokenExp = new Date(
       date.getTime() + Number(rfDuration) * 60000,
-    ).toDateString();
-    await this.userRepo.save(user);
-    return token;
+    );
+
+    return [refreshToken, refreshTokenExp];
   }
 
   async refreshAccessToken(tokenDto: Tokens): Promise<Tokens> {
-    const userData = await this.userRepo.findOne({
-      where: { refreshToken: tokenDto.refresh_token },
-      select: [
-        'id',
-        'refreshTokenExp',
-        'accessToken',
-        'email',
-        'fullName',
-        'role',
-      ],
+    const loginSession = await this.loginSessionRepository.findOne({
+      where: {
+        refreshToken: tokenDto.refresh_token,
+        accessToken: tokenDto.access_token,
+      },
+      relations: ['user'],
     });
-    if (!userData) {
+
+    if (!loginSession) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    if (new Date(userData.refreshTokenExp) < new Date()) {
-      await this.userRepo.update(
-        { id: userData.id },
-        { accessToken: null, refreshToken: null, refreshTokenExp: null },
-      );
+    if (new Date(loginSession.refreshTokenExp) < new Date()) {
+      await this.loginSessionRepository.softRemove(loginSession);
       throw new UnauthorizedException(
         'Refresh token has expired. Please login',
       );
     }
     const checkValidAccessToken =
-      userData.accessToken === tokenDto.access_token;
+      loginSession.accessToken === tokenDto.access_token;
     if (!checkValidAccessToken) {
       throw new UnauthorizedException('Invalid access token');
     }
 
-    const newAccessToken = await this.createAccessToken(userData);
-    const newRefreshToken = await this.createNewRefreshToken(
-      userData.id.toString(),
-      newAccessToken,
-    );
+    const newAccessToken = await this.createAccessToken(loginSession.user);
+    // create new
+    const [newRefreshToken, refreshAccessToken] =
+      await this.createNewRefreshToken(
+        loginSession.user.id.toString(),
+        newAccessToken,
+      );
+    console.log('refresh token', loginSession);
+
+    await this.loginSessionRepository.update(loginSession.id, {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      refreshTokenExp: refreshAccessToken,
+    });
 
     return { access_token: newAccessToken, refresh_token: newRefreshToken };
   }
@@ -201,20 +211,21 @@ export class AuthService {
     let user = await this.userRepo.findOne({
       where: {
         email: email,
-        refreshToken: refreshToken,
       },
-      select: ['id', 'fullName', 'email', 'refreshTokenExp'],
+    });
+    let loginSession = await this.loginSessionRepository.findOne({
+      where: {
+        refreshToken: refreshToken,
+        user: user,
+      },
     });
 
-    if (!user || new Date(user.refreshTokenExp) < new Date()) {
-      user.accessToken = null;
-      user.refreshToken = null;
-      user.refreshTokenExp = null;
-      await this.userRepo.save(user);
+    if (!loginSession || new Date(loginSession.refreshTokenExp) < new Date()) {
+      await this.loginSessionRepository.softRemove(loginSession);
       return null;
     }
 
-    return user;
+    return loginSession;
   }
 
   private async createAccessToken(user: User): Promise<string> {

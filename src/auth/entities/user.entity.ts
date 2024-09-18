@@ -3,6 +3,8 @@ import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { UserRoom } from './user-room.entity';
 import { Task } from 'src/task/entities/task.entity';
 import { Role } from './role.entity';
+import { LoginSession } from './login-session.entity';
+import { Notification } from 'src/notification/entities/notification.entity';
 
 @Entity()
 export class User extends AbstractEntity<User> {
@@ -29,17 +31,11 @@ export class User extends AbstractEntity<User> {
   @OneToMany(() => Task, (task) => task.user)
   tasks: Task[];
 
-  @Column({ nullable: true, name: 'accesstoken', select: false })
-  accessToken: string;
+  // many login session
+  @OneToMany(() => LoginSession, (session) => session.user)
+  sessions: LoginSession[];
 
-  @Column({ nullable: true, name: 'refreshtoken', select: false })
-  refreshToken: string;
-
-  @Column({
-    type: 'date',
-    nullable: true,
-    name: 'refreshtokenexp',
-    select: false,
-  })
-  refreshTokenExp: string;
+  // many notifications
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 }
