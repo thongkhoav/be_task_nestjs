@@ -4,13 +4,17 @@ import { UpdateRoomDto } from './dto/update-room.dto';
 export interface RoomServiceInterface {
   getUserOfRoom(roomId: string, includeOwner: boolean);
   getAllRooms(userId: string);
-  getRoomById(roomId: string);
+
+  getRoomById(userId: string, roomId: string);
+
   isRoomCreator(userId: string, roomId: string); // check if user is room
   isRoomMember(roomId: string, email: string);
   isRoomMemberById(roomId: string, userId: string);
   isRoomExist(roomId: string); // check if user is room
   createRoom(creatorId: string, room: CreateRoomDto);
-  updateRoom(room: UpdateRoomDto);
+
+  updateRoomValidator(ownerId: string, roomId: string, dto: UpdateRoomDto);
+  updateRoom(roomId: string, dto: UpdateRoomDto);
 
   removeRoomValidator(ownerId: string, roomId: string);
   removeRoom(roomId: string);

@@ -19,6 +19,23 @@ import { JoinRoomDto } from './dto/join-room.dto';
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
+  @Post(':roomId/add-member')
+  async addMemeber(
+    @Body() body: { email: string },
+    @Param('roomId') roomId: string,
+    @Req() req,
+  ) {
+    const curUserId = req?.user?.id;
+
+    if (!curUserId) {
+      throw new NotFoundException('User not found');
+    }
+    console.log({ body, roomId });
+
+    await this.roomService.addMemberValidator(curUserId, body.email, roomId);
+    return this.roomService.addMember(body.email, roomId);
+  }
+
   @Post('/join-by-invite')
   async joinRoom(
     @Body()
@@ -62,22 +79,6 @@ export class RoomController {
     return { data };
   }
 
-  @Post('/:rooomId/add-member')
-  async addMemeber(
-    @Body() body: { email: string },
-    @Param('roomId') roomId: string,
-    @Req() req,
-  ) {
-    const curUserId = req?.user?.id;
-
-    if (!curUserId) {
-      throw new NotFoundException('User not found');
-    }
-
-    await this.roomService.addMemberValidator(curUserId, body.email, roomId);
-    return this.roomService.addMember(body.email, roomId);
-  }
-
   @Delete('/:roomId/remove-member')
   async removeMember(
     @Body() body: { userId: string; removeAll: boolean },
@@ -115,8 +116,12 @@ export class RoomController {
   }
 
   @Get('/:roomId')
-  async getRoomById(@Param('roomId') roomId: string) {
-    const data = await this.roomService.getRoomById(roomId);
+  async getRoomById(@Param('roomId') roomId: string, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new NotFoundException('User not found');
+    }
+    const data = await this.roomService.getRoomById(curUserId, roomId);
     return { data };
   }
 

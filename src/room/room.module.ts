@@ -9,6 +9,7 @@ import { NotificationService } from 'src/notification/notification.service';
 import { LoginSession } from 'src/auth/entities/login-session.entity';
 import { NotificationModule } from 'src/notification/notification.module';
 import { Notification } from 'src/notification/entities/notification.entity';
+import { Task } from 'src/task/entities/task.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Notification } from 'src/notification/entities/notification.entity';
       User,
       LoginSession,
       Notification,
+      Task,
     ]),
   ],
   controllers: [RoomController],

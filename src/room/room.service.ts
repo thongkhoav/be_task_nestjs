@@ -15,6 +15,7 @@ import { User } from 'src/auth/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { NotificationService } from 'src/notification/notification.service';
+import { Task } from 'src/task/entities/task.entity';
 
 @Injectable()
 export class RoomService implements RoomServiceInterface {
@@ -25,6 +26,8 @@ export class RoomService implements RoomServiceInterface {
     private userRoomRepo: Repository<UserRoom>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(Task)
+    private taskRepo: Repository<Task>,
     private entityManager: EntityManager,
     private configService: ConfigService,
     private notificationService: NotificationService,
@@ -38,6 +41,8 @@ export class RoomService implements RoomServiceInterface {
     const userRoom = await this.userRoomRepo.findOne({
       where: { user: { id: user.id }, room: { id: roomId } },
     });
+    console.log('isRoomMemberById');
+
     console.log({
       roomId,
       userId,
@@ -71,7 +76,8 @@ export class RoomService implements RoomServiceInterface {
     }
 
     // check if user is already a member of the room
-    if (await this.isRoomMemberById(existingRoom.id, userId)) {
+    const isRoomMember = await this.isRoomMemberById(existingRoom.id, userId);
+    if (isRoomMember) {
       throw new BadRequestException('User is already a member of the room');
     }
   }
@@ -178,9 +184,16 @@ export class RoomService implements RoomServiceInterface {
     });
   }
 
-  async getRoomById(roomId: string) {
+  async getRoomById(userId: string, roomId: string) {
     // get user of room by room id through userRoomRepo
-    const user = await this.userRoomRepo.findOne({
+    const userRoom = await this.userRoomRepo.findOne({
+      where: { user: { id: userId }, room: { id: roomId } },
+    });
+    if (!userRoom) {
+      throw new NotFoundException('User is not a member of the room');
+    }
+
+    const owner = await this.userRoomRepo.findOne({
       where: { room: { id: roomId }, isOwner: true },
       relations: ['user'],
       select: ['user'],
@@ -190,9 +203,9 @@ export class RoomService implements RoomServiceInterface {
       roomName: room.name,
       roomDescription: room.description,
       owner: {
-        id: user.user.id,
-        email: user.user.email,
-        fullName: user.user.fullName,
+        id: owner.user.id,
+        email: owner.user.email,
+        fullName: owner.user.fullName,
       },
       inviteLink:
         room.inviteCode &&
@@ -218,6 +231,7 @@ export class RoomService implements RoomServiceInterface {
     const userRoom = await this.userRoomRepo.findOne({
       where: { user: { id: user.id }, room: { id: roomId } },
     });
+
     if (!userRoom) {
       console.log('userRoom not found');
 
@@ -246,7 +260,11 @@ export class RoomService implements RoomServiceInterface {
     });
   }
 
-  updateRoom(room: UpdateRoomDto) {
+  updateRoomValidator(ownerId: string, roomId: string, dto: UpdateRoomDto) {
+    throw new Error('Method not implemented.');
+  }
+
+  updateRoom(roomId: string, dto: UpdateRoomDto) {
     throw new BadRequestException('Method not implemented.');
   }
 
@@ -309,6 +327,11 @@ export class RoomService implements RoomServiceInterface {
     const userRoom = new UserRoom({ user, room });
     userRoom.isOwner = false;
     await this.userRoomRepo.save(userRoom);
+    await this.notificationService.sendNotificationAndSave(
+      user.id,
+      'Invited to the room',
+      `You have been invited to the room ${room.name}`,
+    );
   }
 
   async removeMemberValidator(
@@ -343,7 +366,7 @@ export class RoomService implements RoomServiceInterface {
         },
       });
       if (!userRoom) {
-        return false;
+        throw new BadRequestException('User is not a member of the room');
       }
     } else {
       // check if room is empty
@@ -361,12 +384,27 @@ export class RoomService implements RoomServiceInterface {
     roomId: string,
     removeAll: boolean,
   ): Promise<boolean> {
+    // check room owner in validator
+
     if (removeAll) {
-      await this.userRoomRepo.softRemove(
-        await this.userRoomRepo.find({
-          where: { room: { id: roomId } },
-        }),
-      );
+      // remove all members but owner curUserId
+      // also unassign all tasks
+      const members = await this.userRoomRepo.find({
+        where: { room: { id: roomId }, isOwner: false },
+      });
+      for (const member of members) {
+        // unassign all tasks
+        await this.taskRepo.update(
+          { user: { id: member.user.id }, room: { id: roomId } },
+          { user: null },
+        );
+        await this.userRoomRepo.softRemove(member);
+        await this.notificationService.sendNotificationAndSave(
+          member.user.id,
+          'Removed from the room',
+          `You have been removed from the room by the owner`,
+        );
+      }
       return true;
     } else {
       var userRoom = await this.userRoomRepo.findOne({
@@ -375,7 +413,17 @@ export class RoomService implements RoomServiceInterface {
       if (!userRoom) {
         return false;
       }
+      // unassign all tasks
+      await this.taskRepo.update(
+        { user: { id: userId }, room: { id: roomId } },
+        { user: null },
+      );
       await this.userRoomRepo.softRemove(userRoom);
+      await this.notificationService.sendNotificationAndSave(
+        userId,
+        'Removed from the room',
+        `You have been removed from the room by the owner`,
+      );
       return true;
     }
   }
