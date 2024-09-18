@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
-import { UpdateRoomDto } from './dto/update-room.dto';
 import { JoinRoomDto } from './dto/join-room.dto';
 
 @Controller({ version: '1', path: 'room' })

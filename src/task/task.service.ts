@@ -15,6 +15,7 @@ import { Task, TaskStatus } from './entities/task.entity';
 import { User } from 'src/auth/entities/user.entity';
 import { Room } from 'src/room/entities/room.entity';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class TaskService implements TaskServiceInterface {
@@ -27,6 +28,7 @@ export class TaskService implements TaskServiceInterface {
     private roomRepository: Repository<Room>,
     @InjectRepository(UserRoom)
     private userRoomRepository: Repository<UserRoom>,
+    private notificationService: NotificationService,
   ) {}
 
   // Only owner can assign task
@@ -64,7 +66,20 @@ export class TaskService implements TaskServiceInterface {
   }
 
   async assignTask(taskId: string, userId: string): Promise<void> {
+    const task = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['room'],
+    });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
     await this.taskRepository.update({ id: taskId }, { user: { id: userId } });
+
+    await this.notificationService.sendNotificationAndSave(
+      userId,
+      'Assigned to task',
+      `Assigned to task "${taskId}" in room "${task.room.name}"`,
+    );
   }
 
   async getAllTasksOfRoom(roomId: string): Promise<any[]> {
@@ -204,6 +219,7 @@ export class TaskService implements TaskServiceInterface {
   async updateTask(taskId: string, task: UpdateTaskDto): Promise<void> {
     const existTask = await this.taskRepository.findOne({
       where: { id: taskId },
+      relations: ['room'],
     });
 
     if (!existTask) {
@@ -219,6 +235,13 @@ export class TaskService implements TaskServiceInterface {
         user: { id: task.userId },
       },
     );
+    if (existTask.user.id !== task.userId) {
+      await this.notificationService.sendNotificationAndSave(
+        task.userId,
+        'Assigned to task',
+        `Assigned to task ${existTask.title} in room ${existTask.room.name}`,
+      );
+    }
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -274,5 +297,22 @@ export class TaskService implements TaskServiceInterface {
       { id: task.taskId },
       { status: task.status },
     );
+    // notify to room owner
+    const taskDb = await this.taskRepository.findOne({
+      where: { id: task.taskId },
+      relations: ['room'],
+    });
+    const roomOwner = await this.userRoomRepository.findOne({
+      where: { room: { id: taskDb.room.id }, isOwner: true },
+      relations: ['user'],
+    });
+
+    if (task.status === TaskStatus.DONE) {
+      await this.notificationService.sendNotificationAndSave(
+        roomOwner.user.id,
+        'Task completed',
+        `Task "${taskDb.title}" in room "${taskDb.room.name}" is DONE`,
+      );
+    }
   }
 }
