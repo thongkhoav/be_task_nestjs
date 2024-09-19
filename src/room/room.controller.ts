@@ -9,10 +9,12 @@ import {
   Query,
   Req,
   NotFoundException,
+  Put,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { JoinRoomDto } from './dto/join-room.dto';
+import { UpdateRoomDto } from './dto/update-room.dto';
 
 @Controller({ version: '1', path: 'room' })
 export class RoomController {
@@ -135,6 +137,21 @@ export class RoomController {
     }
     const data = await this.roomService.getRoomById(curUserId, roomId);
     return { data };
+  }
+
+  @Put('/:roomId')
+  async updateRoom(
+    @Param('roomId') roomId: string,
+    @Body() body: UpdateRoomDto,
+    @Req() req,
+  ) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new NotFoundException('User not found');
+    }
+    await this.roomService.updateRoomValidator(curUserId, roomId, body);
+    await this.roomService.updateRoom(roomId, body);
+    return { message: 'Room updated' };
   }
 
   // @Get(':id')

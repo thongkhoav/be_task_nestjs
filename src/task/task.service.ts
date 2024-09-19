@@ -292,7 +292,10 @@ export class TaskService implements TaskServiceInterface {
     }
   }
 
-  async updateStatusTask(task: UpdateStatusTaskDTO): Promise<void> {
+  async updateStatusTask(
+    curUserId: string,
+    task: UpdateStatusTaskDTO,
+  ): Promise<void> {
     await this.taskRepository.update(
       { id: task.taskId },
       { status: task.status },
@@ -307,7 +310,8 @@ export class TaskService implements TaskServiceInterface {
       relations: ['user'],
     });
 
-    if (task.status === TaskStatus.DONE) {
+    // memmber update status to DONE -> notify to owner
+    if (curUserId !== roomOwner.user.id && task.status === TaskStatus.DONE) {
       await this.notificationService.sendNotificationAndSave(
         roomOwner.user.id,
         'Task completed',

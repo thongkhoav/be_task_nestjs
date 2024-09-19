@@ -62,7 +62,7 @@ export class TaskController {
       curUserId,
       updateStatusDto,
     );
-    await this.taskService.updateStatusTask(updateStatusDto);
+    await this.taskService.updateStatusTask(curUserId, updateStatusDto);
     return { message: 'Task status updated' };
   }
 

@@ -260,12 +260,24 @@ export class RoomService implements RoomServiceInterface {
     });
   }
 
-  updateRoomValidator(ownerId: string, roomId: string, dto: UpdateRoomDto) {
-    throw new Error('Method not implemented.');
+  async updateRoomValidator(
+    ownerId: string,
+    roomId: string,
+    dto: UpdateRoomDto,
+  ) {
+    // check if room is exist
+    if (!(await this.roomRepository.findOne({ where: { id: roomId } }))) {
+      throw new NotFoundException('Room not found');
+    }
+
+    // check if owner is the owner of the room
+    if (!(await this.isRoomCreator(ownerId, roomId))) {
+      throw new UnauthorizedException('You are not the owner of the room');
+    }
   }
 
-  updateRoom(roomId: string, dto: UpdateRoomDto) {
-    throw new BadRequestException('Method not implemented.');
+  async updateRoom(roomId: string, dto: UpdateRoomDto) {
+    await this.roomRepository.update({ id: roomId }, dto);
   }
 
   async removeRoomValidator(ownerId: string, roomId: string): Promise<void> {

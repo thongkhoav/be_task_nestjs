@@ -25,5 +25,5 @@ export interface TaskServiceInterface {
     userId: string,
     task: UpdateStatusTaskDTO,
   ): Promise<void>;
-  updateStatusTask(task: UpdateStatusTaskDTO): Promise<void>;
+  updateStatusTask(curUserId: string, task: UpdateStatusTaskDTO): Promise<void>;
 }
