@@ -6,7 +6,6 @@ import { Room } from 'src/room/entities/room.entity';
 
 @Entity()
 export class UserRoom extends SmallAbstractEntity<UserRoom> {
-
   @ManyToOne(() => User, (user) => user.userRooms)
   user: User;
 

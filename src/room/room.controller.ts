@@ -78,6 +78,19 @@ export class RoomController {
     return { data };
   }
 
+  @Delete(':roomId')
+  async removeRoom(@Param('roomId') roomId: string, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.roomService.removeRoomValidator(curUserId, roomId);
+
+    await this.roomService.removeRoom(roomId);
+    return { message: 'Room removed' };
+  }
+
   @Delete('/:roomId/remove-member')
   async removeMember(
     @Body() body: { userId: string; removeAll: boolean },
@@ -133,16 +146,4 @@ export class RoomController {
   // update(@Param('id') id: string, @Body() updateRoomDto: UpdateRoomDto) {
   //   return this.roomService.update(+id, updateRoomDto);
   // }
-
-  @Delete(':roomId')
-  async removeRoom(@Param('roomId') roomId: string, @Req() req) {
-    const curUserId = req?.user?.id;
-    if (!curUserId) {
-      throw new NotFoundException('User not found');
-    }
-
-    await this.roomService.removeRoomValidator(curUserId, roomId);
-
-    return await this.roomService.removeRoom(roomId);
-  }
 }

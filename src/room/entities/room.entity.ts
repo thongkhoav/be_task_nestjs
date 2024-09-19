@@ -21,9 +21,15 @@ export class Room extends AbstractEntity<Room> {
   @Column({ unique: true, nullable: false })
   inviteCode: string;
 
-  @OneToMany(() => UserRoom, (userRoom) => userRoom.room)
+  @OneToMany(() => UserRoom, (userRoom) => userRoom.room, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   userRooms: UserRoom[];
 
-  @OneToMany(() => Task, (task) => task.room)
+  @OneToMany(() => Task, (task) => task.room, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
   tasks: Task[];
 }

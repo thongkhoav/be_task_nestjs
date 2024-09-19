@@ -268,28 +268,52 @@ export class RoomService implements RoomServiceInterface {
     throw new BadRequestException('Method not implemented.');
   }
 
-  async removeRoomValidator(ownerId: string, roomId: string): Promise<string> {
+  async removeRoomValidator(ownerId: string, roomId: string): Promise<void> {
     // check if room is exist
     if (!(await this.roomRepository.findOne({ where: { id: roomId } }))) {
       throw new NotFoundException('Room not found');
     }
 
-    // check if room is empty
-    const userRooms = await this.userRoomRepo.find({
-      where: { room: { id: roomId } },
-    });
-    if (userRooms.length > 1) {
-      throw new BadRequestException(
-        'Room has members. Please remove all members first',
-      );
-    } else {
-      return 'Remove room will remove all members and tasks in the room. Are you sure?';
+    // check if owner is the owner of the room
+    if (!(await this.isRoomCreator(ownerId, roomId))) {
+      throw new UnauthorizedException('You are not the owner of the room');
     }
+
+    // check if room is empty
+    // const userRooms = await this.userRoomRepo.find({
+    //   where: { room: { id: roomId } },
+    // });
+    // if (userRooms.length > 1) {
+    //   throw new BadRequestException(
+    //     'Room has members. Please remove all members first',
+    //   );
+    // } else {
+    //   return 'Remove room will remove all members and tasks in the room. Are you sure?';
+    // }
   }
 
   async removeRoom(roomId: string) {
     await this.entityManager.transaction(async (manager) => {
-      await manager.softRemove(Room, { id: roomId });
+      const room = await manager.findOne(Room, {
+        where: { id: roomId },
+        relations: ['userRooms', 'tasks'],
+      });
+      if (!room) {
+        throw new NotFoundException(`Room with ID "${roomId}" not found`);
+      }
+
+      // Soft delete related UserRoom entries
+      if (room.userRooms) {
+        await manager.softRemove(UserRoom, room.userRooms);
+      }
+
+      // Soft delete related Task entries
+      if (room.tasks) {
+        await manager.softRemove(Task, room.tasks);
+      }
+
+      // Finally, soft delete the Room
+      await manager.softRemove(Room, room);
     });
   }
 
