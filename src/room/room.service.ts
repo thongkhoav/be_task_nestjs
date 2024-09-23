@@ -32,6 +32,51 @@ export class RoomService implements RoomServiceInterface {
     private configService: ConfigService,
     private notificationService: NotificationService,
   ) {}
+  async leaveRoomValidator(userId: string, roomId: string) {
+    // check if user is exist
+    if (!(await this.userRepo.findOne({ where: { id: userId } }))) {
+      throw new NotFoundException('User not found');
+    }
+
+    // check if room is exist
+    if (!(await this.roomRepository.findOne({ where: { id: roomId } }))) {
+      throw new NotFoundException('Room not found');
+    }
+
+    // check if user is a member of the room
+    if (!(await this.isRoomMemberById(roomId, userId))) {
+      throw new BadRequestException('User is not a member of the room');
+    }
+
+    // check if user is the owner of the room
+    if (await this.isRoomCreator(userId, roomId)) {
+      throw new BadRequestException('Owner cannot leave the room');
+    }
+  }
+
+  async leaveRoom(userId: string, roomId: string) {
+    const userRoom = await this.userRoomRepo.findOne({
+      where: { user: { id: userId }, room: { id: roomId }, isOwner: false },
+      relations: ['user', 'room'],
+    });
+    if (!userRoom) {
+      throw new NotFoundException('User is not a member of the room');
+    }
+    await this.taskRepo.update(
+      { user: { id: userId }, room: { id: roomId } },
+      { user: null },
+    );
+    await this.userRoomRepo.softRemove(userRoom);
+    const owner = await this.userRoomRepo.findOne({
+      where: { room: { id: roomId }, isOwner: true },
+      relations: ['user'],
+    });
+    await this.notificationService.sendNotificationAndSave(
+      owner.user.id,
+      'Member left room',
+      `${userRoom.user.fullName} left room ${userRoom.room.name}`,
+    );
+  }
 
   async isRoomMemberById(roomId: string, userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });

@@ -139,6 +139,17 @@ export class RoomController {
     return { data };
   }
 
+  @Put('/:roomId/leave')
+  async leaveRoom(@Param('roomId') roomId: string, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new NotFoundException('User not found');
+    }
+    await this.roomService.leaveRoomValidator(curUserId, roomId);
+    await this.roomService.leaveRoom(curUserId, roomId);
+    return { message: 'Room left' };
+  }
+
   @Put('/:roomId')
   async updateRoom(
     @Param('roomId') roomId: string,
