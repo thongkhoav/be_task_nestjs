@@ -2,9 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import admin from 'firebase-admin';
 import { UpdateFcmTokenDto } from './dto/update-notification.dto';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { LoginSession } from 'src/auth/entities/login-session.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from 'src/auth/entities/user.entity';
 
@@ -17,6 +17,7 @@ export class NotificationService {
     private notificationRepository: Repository<Notification>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectEntityManager() private readonly entityManager: EntityManager,
   ) {}
 
   // test
@@ -89,22 +90,31 @@ export class NotificationService {
 
   async updateFcmToken(updateFcmTokenDto: UpdateFcmTokenDto) {
     try {
-      const loginSession = await this.loginSessionRepository.findOne({
-        where: {
-          refreshToken: updateFcmTokenDto.refreshToken,
+      await this.entityManager.transaction(async (manager) => {
+        // invalid existing fcm token
+        await manager.softDelete(LoginSession, {
           user: { id: updateFcmTokenDto.userId },
-        },
-      });
-      if (!loginSession) {
-        throw new BadRequestException('Invalid fcm token');
-      }
-      if (new Date(loginSession.refreshTokenExp) < new Date()) {
-        throw new BadRequestException('Refresh token expired');
-      }
-      loginSession.fcmToken = updateFcmTokenDto.fcmToken;
-      console.log('loginSession', loginSession);
+          fcmToken: updateFcmTokenDto.fcmToken,
+        });
 
-      await this.loginSessionRepository.save(loginSession);
+        const loginSession = await manager.findOne(LoginSession, {
+          where: {
+            refreshToken: updateFcmTokenDto.refreshToken,
+            user: { id: updateFcmTokenDto.userId },
+          },
+        });
+        if (!loginSession) {
+          throw new BadRequestException('Invalid fcm token');
+        }
+        if (new Date(loginSession.refreshTokenExp) < new Date()) {
+          throw new BadRequestException('Refresh token expired');
+        }
+        loginSession.fcmToken = updateFcmTokenDto.fcmToken;
+        console.log('loginSession', loginSession);
+
+        // update current login session fcm token
+        await manager.save(loginSession);
+      });
     } catch (error) {
       console.log('Error updating fcm token:', error);
       throw new BadRequestException(error.message);
