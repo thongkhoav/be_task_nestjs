@@ -176,6 +176,13 @@ export class TaskService implements TaskServiceInterface {
 
     await this.taskRepository.save(newTask);
     console.log('Task created');
+    if (task.userId) {
+      await this.notificationService.sendNotificationAndSave(
+        task.userId,
+        'Assigned to task',
+        `Assigned to task ${newTask.title} in room ${newTask.room.name}`,
+      );
+    }
     return true;
   }
 

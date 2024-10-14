@@ -146,7 +146,7 @@ export class RoomService implements RoomServiceInterface {
     await this.notificationService.sendNotificationAndSave(
       owner.user.id,
       'New member joined room',
-      `${user.fullName} joined room ${existingRoom.name}`,
+      `${user.fullName} joined room "${existingRoom.name}"`,
     );
     return existingRoom.id;
   }
