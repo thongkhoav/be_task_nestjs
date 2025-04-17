@@ -242,7 +242,7 @@ export class TaskService implements TaskServiceInterface {
         user: { id: task.userId },
       },
     );
-    if (existTask.user.id !== task.userId) {
+    if (existTask?.user?.id !== task.userId) {
       await this.notificationService.sendNotificationAndSave(
         task.userId,
         'Assigned to task',
