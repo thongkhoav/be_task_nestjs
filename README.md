@@ -3,7 +3,7 @@
 # FE source code: https://github.com/thongkhoav/fe_task_nextjs
 
 - To run:
-
+  - Complete .env based on the sample file .env.example
   - start : nest start
   - start:dev : nest start --watch
 
