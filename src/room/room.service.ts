@@ -156,7 +156,7 @@ export class RoomService implements RoomServiceInterface {
       where: { room: { id: existingRoom.id }, isOwner: true },
       relations: ['user'],
     });
-    l;
+
     if (!owner?.user?.id) return;
 
     await this.notificationService.sendNotificationAndSave(
