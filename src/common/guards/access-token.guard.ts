@@ -18,6 +18,7 @@ export class AccessTokenGuard extends AuthGuard('jwt') {
 
     if (isPublic) return true;
 
+    // call validate method of JwtStrategy
     return super.canActivate(context);
   }
 }

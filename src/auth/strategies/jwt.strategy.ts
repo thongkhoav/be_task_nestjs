@@ -39,6 +39,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
+  // decode data.access_token from jwtFromRequest by secretOrKey
+  // and return payload
+  // returned value of this method will be assigned to request.user
   async validate(payload: JwtPayload) {
     console.log('validate jwt', payload);
 
