@@ -32,6 +32,7 @@ export class RoomService implements RoomServiceInterface {
     private configService: ConfigService,
     private notificationService: NotificationService,
   ) {}
+
   async leaveRoomValidator(userId: string, roomId: string) {
     // check if user is exist
     if (!(await this.userRepo.findOne({ where: { id: userId } }))) {
@@ -62,11 +63,23 @@ export class RoomService implements RoomServiceInterface {
     if (!userRoom) {
       throw new NotFoundException('User is not a member of the room');
     }
-    await this.taskRepo.update(
-      { user: { id: userId }, room: { id: roomId } },
-      { user: null },
-    );
-    await this.userRoomRepo.softRemove(userRoom);
+
+    // await this.taskRepo.update(
+    //   { user: { id: userId }, room: { id: roomId } },
+    //   { user: null },
+    // );
+    // await this.userRoomRepo.softRemove(userRoom);
+
+    await this.entityManager.transaction(async (manager) => {
+      await manager.softRemove(userRoom);
+      await manager.update(
+        Task,
+        { user: { id: userId }, room: { id: roomId } },
+        { user: null },
+      );
+    });
+
+    // Find the room owner and send notification
     const owner = await this.userRoomRepo.findOne({
       where: { room: { id: roomId }, isOwner: true },
       relations: ['user'],
@@ -76,6 +89,7 @@ export class RoomService implements RoomServiceInterface {
       'Member left room',
       `${userRoom.user.fullName} left room ${userRoom.room.name}`,
     );
+    return userRoom;
   }
 
   async isRoomMemberById(roomId: string, userId: string) {
@@ -137,10 +151,12 @@ export class RoomService implements RoomServiceInterface {
     userRoom.isOwner = false;
     await this.userRoomRepo.save(userRoom);
 
+    // find the room owner and send notification
     const owner = await this.userRoomRepo.findOne({
       where: { room: { id: existingRoom.id }, isOwner: true },
       relations: ['user'],
     });
+    l;
     if (!owner?.user?.id) return;
 
     await this.notificationService.sendNotificationAndSave(
