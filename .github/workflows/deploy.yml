@@ -30,7 +30,24 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: task_js
-        IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+    - name: Replace <IMAGE_URI> with actual image
+      run: |
+        IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/task_js:latest
+        sed "s|<IMAGE_URI>|$IMAGE_URI|g" .github/ecs-task-def-template.json > task-def.json
+
+    - name: Register new ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-register-task-definition@v1
+      with:
+        task-definition: task-def.json
+
+    - name: Deploy new task definition to ECS service
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        service: your-service-name
+        cluster: your-cluster-name
+        task-definition: ${{ steps.task-def.outputs.task-definition-arn }}
+        wait-for-service-stability: true

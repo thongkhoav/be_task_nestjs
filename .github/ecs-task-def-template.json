@@ -1,0 +1,19 @@
+{
+  "family": "task-js-task",
+  "networkMode": "bridge",
+  "containerDefinitions": [
+    {
+      "name": "task-js-container",
+      "image": "<IMAGE_URI>",
+      "cpu": 256,
+      "memory": 512,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3333,
+          "hostPort": 3333
+        }
+      ]
+    }
+  ]
+}
