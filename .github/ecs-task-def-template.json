@@ -1,9 +1,9 @@
 {
-  "family": "task-js-task",
-  "networkMode": "bridge",
+  "family": "taskjs-td",
+  "networkMode": "awsvpc",
   "containerDefinitions": [
     {
-      "name": "task-js-container",
+      "name": "taskjs-container",
       "image": "<IMAGE_URI>",
       "cpu": 256,
       "memory": 512,
