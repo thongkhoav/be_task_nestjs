@@ -9,13 +9,19 @@
       "cpu": 0,
       "portMappings": [
         {
+          "name": "taskjs-container-3333-tcp",
           "containerPort": 3333,
           "protocol": "tcp"
         }
       ]
     }
   ],
+  "executionRoleArn": "arn:aws:iam::905418022082:role/ecsTaskExecutionRole",
   "compatibilities": ["EC2"],
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
   "requiresCompatibilities": ["EC2"],
   "cpu": "512",
   "memory": "512"
