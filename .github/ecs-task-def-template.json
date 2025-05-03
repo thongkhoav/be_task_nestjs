@@ -5,9 +5,8 @@
     {
       "name": "taskjs-container",
       "image": "<IMAGE_URI>",
-      "cpu": 256,
-      "memory": 512,
       "essential": true,
+      "cpu": 0,
       "portMappings": [
         {
           "containerPort": 3333,
@@ -16,6 +15,8 @@
       ]
     }
   ],
+  "compatibilities": ["EC2"],
+  "requiresCompatibilities": ["EC2"],
   "cpu": "512",
   "memory": "512"
 }
