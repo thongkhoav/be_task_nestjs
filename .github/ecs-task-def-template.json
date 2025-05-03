@@ -11,9 +11,11 @@
       "portMappings": [
         {
           "containerPort": 3333,
-          "hostPort": 3333
+          "protocol": "tcp"
         }
       ]
     }
-  ]
+  ],
+  "cpu": "512",
+  "memory": "1024"
 }

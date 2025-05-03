@@ -1,7 +1,7 @@
 import admin from 'firebase-admin';
 import 'dotenv/config';
 
-console.log('asdsad', process.env.FIREBASE_PROJECT_ID);
+// console.log('asdsad', process.env.FIREBASE_PROJECT_ID);
 
 export const firebaseAdminProvider = {
   provide: 'FIREBASE_ADMIN',
