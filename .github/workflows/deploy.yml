@@ -42,6 +42,8 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-def.json
+          container-name: taskjs-container
+          image: ${{ steps.login-ecr.outputs.registry }}/task_js:latest
 
       - name: Deploy new task definition to ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
