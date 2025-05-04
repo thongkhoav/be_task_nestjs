@@ -6,12 +6,13 @@
       "name": "taskjs-container",
       "image": "<IMAGE_URI>",
       "essential": true,
-      "cpu": 512,
-      "memory": 350,
+      "cpu": "512",
+      "memory": "350",
       "portMappings": [
         {
           "name": "taskjs-container-3333-tcp",
           "containerPort": 3333,
+          "hostPort": 3333,
           "protocol": "tcp"
         }
       ]
@@ -24,6 +25,6 @@
     "operatingSystemFamily": "LINUX"
   },
   "requiresCompatibilities": ["EC2"],
-  "cpu": 512,
-  "memory": 400
+  "cpu": "512",
+  "memory": "400"
 }
