@@ -6,7 +6,8 @@
       "name": "taskjs-container",
       "image": "<IMAGE_URI>",
       "essential": true,
-      "cpu": 0,
+      "cpu": 512,
+      "memory": 512,
       "portMappings": [
         {
           "name": "taskjs-container-3333-tcp",

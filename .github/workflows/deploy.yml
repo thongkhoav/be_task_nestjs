@@ -49,5 +49,5 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           service: taskjs-service
-          cluster: taskjs_cluster
+          cluster: cluster-taskjs
           task-definition: ${{ steps.task-def.outputs.task-definition }}
