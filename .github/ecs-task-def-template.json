@@ -1,6 +1,6 @@
 {
   "family": "taskjs-td",
-  "networkMode": "bridge",
+  "networkMode": "awsvpc",
   "containerDefinitions": [
     {
       "name": "taskjs-container",
@@ -12,7 +12,6 @@
         {
           "name": "taskjs-container-3333-tcp",
           "containerPort": 3333,
-          "hostPort": 3333,
           "protocol": "tcp"
         }
       ]
