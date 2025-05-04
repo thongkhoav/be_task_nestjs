@@ -51,3 +51,4 @@ jobs:
           service: taskjs-service
           cluster: cluster-taskjs
           task-definition: ${{ steps.task-def.outputs.task-definition }}
+          wait-for-service-stability: true

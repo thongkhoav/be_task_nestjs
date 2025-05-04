@@ -1,6 +1,6 @@
 {
   "family": "taskjs-td",
-  "networkMode": "awsvpc",
+  "networkMode": "bridge",
   "containerDefinitions": [
     {
       "name": "taskjs-container",
@@ -24,6 +24,6 @@
     "operatingSystemFamily": "LINUX"
   },
   "requiresCompatibilities": ["EC2"],
-  "cpu": "512",
-  "memory": "400"
+  "cpu": 512,
+  "memory": 400
 }
