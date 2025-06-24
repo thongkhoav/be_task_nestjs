@@ -1,0 +1,55 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { TaskService } from './task/task.service';
+import { UpdateStatusTaskDTO } from './task/dto/update-task-status.dto';
+import { Task, TaskStatus } from './task/entities/task.entity';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+@WebSocketGateway({ cors: true })
+export class TaskGateway {
+  @WebSocketServer()
+  server: Server;
+
+  constructor(private readonly taskService: TaskService) {}
+
+  @SubscribeMessage('join_room')
+  handleJoinRoom(
+    @MessageBody() roomId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(roomId);
+    console.log(`Client ${client.id} joined room ${roomId}`);
+  }
+
+  @SubscribeMessage('update_task')
+  async handleTaskUpdate(
+    @MessageBody() data: { taskId: string; status: string; curUserId: string },
+  ) {
+    if (
+      !data.curUserId ||
+      !data.taskId ||
+      !data.status ||
+      !Object.values(TaskStatus).includes(data.status as TaskStatus)
+    ) {
+      throw new Error('Invalid data provided');
+    }
+
+    // Validate the task status update
+    const updated = await this.taskService.updateStatusTask(data.curUserId, {
+      taskId: data.taskId,
+      status: data.status as UpdateStatusTaskDTO['status'],
+    });
+    this.server.to(updated.room.id).emit('task_updated', updated);
+  }
+
+  emitTaskUpdatedToRoom(roomId: string, task: Task) {
+    this.server.to(roomId).emit('task_updated', task);
+  }
+}

@@ -15,7 +15,6 @@ export class UpdateTaskDto {
   @Type(() => Date)
   dueDate: Date;
 
-  @IsNotEmpty()
   @IsString()
   userId: string;
 }

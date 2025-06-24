@@ -12,6 +12,7 @@ import { AccessTokenGuard } from './common/guards/access-token.guard';
 import { UserModule } from './user/user.module';
 import { NotificationModule } from './notification/notification.module';
 import * as admin from 'firebase-admin';
+import { TaskGateway } from './task.gateway';
 
 config();
 
@@ -31,7 +32,9 @@ config();
       provide: APP_GUARD,
       useClass: AccessTokenGuard,
     },
+    TaskGateway,
   ],
+  exports: [TaskGateway],
 })
 export class AppModule {
   constructor() {}

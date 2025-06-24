@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -16,6 +17,7 @@ import { User } from 'src/auth/entities/user.entity';
 import { Room } from 'src/room/entities/room.entity';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { NotificationService } from 'src/notification/notification.service';
+import { TaskGateway } from 'src/task.gateway';
 
 @Injectable()
 export class TaskService implements TaskServiceInterface {
@@ -205,7 +207,7 @@ export class TaskService implements TaskServiceInterface {
     }
 
     // check if user exists
-    if (task.userId) {
+    if (task?.userId) {
       const user = await this.userRepository.findOne({
         where: { id: task.userId },
       });
@@ -224,7 +226,7 @@ export class TaskService implements TaskServiceInterface {
   }
 
   async updateTask(taskId: string, task: UpdateTaskDto): Promise<void> {
-    const existTask = await this.taskRepository.findOne({
+    let existTask = await this.taskRepository.findOne({
       where: { id: taskId },
       relations: ['room'],
     });
@@ -233,22 +235,41 @@ export class TaskService implements TaskServiceInterface {
       throw new NotFoundException('Task not found');
     }
 
-    await this.taskRepository.update(
-      { id: taskId },
-      {
-        title: task.title,
-        description: task.description,
-        dueDate: task.dueDate,
-        user: { id: task.userId },
-      },
-    );
-    if (existTask?.user?.id !== task.userId) {
-      await this.notificationService.sendNotificationAndSave(
-        task.userId,
-        'Assigned to task',
-        `Assigned to task ${existTask.title} in room ${existTask.room.name}`,
+    if (task?.userId) {
+      await this.taskRepository.update(
+        { id: taskId },
+        {
+          title: task.title,
+          description: task.description,
+          dueDate: task.dueDate,
+          user: { id: task.userId },
+        },
+      );
+      if (existTask?.user?.id !== task.userId) {
+        await this.notificationService.sendNotificationAndSave(
+          task.userId,
+          'Assigned to task',
+          `Assigned to task ${existTask.title} in room ${existTask.room.name}`,
+        );
+      }
+    } else {
+      await this.taskRepository.update(
+        { id: taskId },
+        {
+          title: task.title,
+          description: task.description,
+          dueDate: task.dueDate,
+          user: null,
+        },
       );
     }
+    // existTask = await this.taskRepository.findOne({
+    //   where: { id: taskId },
+    //   relations: ['room', 'user'],
+    // });
+
+    // send socket
+    // this.taskGateway.emitTaskUpdatedToRoom(existTask.room.id, existTask);
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -302,16 +323,17 @@ export class TaskService implements TaskServiceInterface {
   async updateStatusTask(
     curUserId: string,
     task: UpdateStatusTaskDTO,
-  ): Promise<void> {
-    await this.taskRepository.update(
-      { id: task.taskId },
-      { status: task.status },
-    );
-    // notify to room owner
+  ): Promise<Task> {
+    // check if task exists
     const taskDb = await this.taskRepository.findOne({
       where: { id: task.taskId },
-      relations: ['room'],
+      relations: ['room', 'user'],
     });
+
+    taskDb.status = task.status;
+    await this.taskRepository.save(taskDb);
+
+    // notify to room owner
     const roomOwner = await this.userRoomRepository.findOne({
       where: { room: { id: taskDb.room.id }, isOwner: true },
       relations: ['user'],
@@ -325,5 +347,7 @@ export class TaskService implements TaskServiceInterface {
         `Task "${taskDb.title}" in room "${taskDb.room.name}" is DONE`,
       );
     }
+
+    return taskDb;
   }
 }
