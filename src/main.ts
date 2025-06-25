@@ -23,7 +23,7 @@ async function bootstrap() {
   );
   app.use(cookieParser());
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: configService.get<string>('FE_HOST'),
     credentials: true,
   });
 
