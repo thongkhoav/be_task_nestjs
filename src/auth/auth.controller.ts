@@ -61,9 +61,9 @@ export class AuthController {
 
     res.cookie(this.config.get('COOKIE_AUTH', 'Authentication'), tokens, {
       maxAge: 1000 * 60 * 60 * 24 * 7,
-      httpOnly: true, // set to true in production
-      secure: false, // set to true in production
-      sameSite: 'strict', // set to 'none' in production
+      httpOnly: false, // set to true in production
+      secure: true, // set to true in production
+      sameSite: 'none', // set to 'none' in production
     });
 
     return tokens;
