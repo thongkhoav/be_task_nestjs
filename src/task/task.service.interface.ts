@@ -5,7 +5,12 @@ import { Task } from './entities/task.entity';
 
 export interface TaskServiceInterface {
   getAllTasksOfRoom(roomId: string): Promise<any[]>; // string for GUIDs
-  getTasksOfRoom(roomId: string, userId: string): Promise<any[]>;
+  getTasksOfRoom(
+    roomId: string,
+    userId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<any[]>;
 
   createTaskValidator(task: CreateTaskDto): Promise<void>;
   createTask(task: CreateTaskDto): Promise<boolean>;

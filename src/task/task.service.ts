@@ -93,30 +93,30 @@ export class TaskService implements TaskServiceInterface {
     return tasks;
   }
 
-  async getTasksOfRoom(roomId: string, userId: string): Promise<any[]> {
-    let tasks;
-    let whereOption: any = { room: { id: roomId } };
+  async getTasksOfRoom(
+    roomId: string,
+    userId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<any[]> {
+    // use query builder to get tasks of room
+    console.log('params ', { roomId, userId, startDate, endDate });
+    const query = this.taskRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.user', 'user')
+      .where('task.roomId = :roomId', { roomId });
     if (userId) {
-      whereOption = { ...whereOption, user: { id: userId } };
+      query.andWhere('task.userId = :userId', { userId });
     }
-    tasks = await this.taskRepository.find({
-      where: whereOption,
-      relations: ['user'],
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        dueDate: true,
-        status: true,
-        review: true,
-        user: {
-          id: true,
-          fullName: true,
-          email: true,
-        },
-      },
-    });
-    // console.log('room tasks', tasks);
+    if (startDate) {
+      query.andWhere('task.dueDate >= :startDate', { startDate });
+    }
+    if (endDate) {
+      query.andWhere('task.dueDate <= :endDate', { endDate });
+    }
+    query.orderBy('task.dueDate', 'ASC');
+    const tasks = await query.getMany();
+
     return tasks;
   }
 

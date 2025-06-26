@@ -47,8 +47,16 @@ export class TaskController {
   async getRoomUserTasks(
     @Param('roomId') roomId: string,
     @Query('userId') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    const data = await this.taskService.getTasksOfRoom(roomId, userId);
+    console.log('Fetching tasks for room:', roomId, 'user:', userId);
+    const data = await this.taskService.getTasksOfRoom(
+      roomId,
+      userId,
+      startDate,
+      endDate,
+    );
     return { data };
   }
 

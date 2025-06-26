@@ -4,6 +4,7 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { TaskService } from '../task/task.service';
@@ -13,8 +14,12 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
-@WebSocketGateway({ cors: true })
-export class TaskGateway implements OnModuleInit {
+@WebSocketGateway({
+  cors: {
+    origin: '*',
+  },
+})
+export class TaskGateway implements OnModuleInit, OnGatewayConnection {
   @WebSocketServer()
   server: Server;
 
@@ -22,6 +27,10 @@ export class TaskGateway implements OnModuleInit {
     private readonly taskService: TaskService,
     private eventEmitter: EventEmitter2,
   ) {}
+
+  handleConnection(client: Socket) {
+    console.log('Client connected:', client.id);
+  }
 
   onModuleInit() {
     this.eventEmitter.on('task.updated', (task: Task) => {
