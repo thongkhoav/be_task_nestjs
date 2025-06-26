@@ -9,7 +9,9 @@ import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { NotificationService } from 'src/notification/notification.service';
 import { LoginSession } from 'src/auth/entities/login-session.entity';
 import { Notification } from 'src/notification/entities/notification.entity';
-import { TaskGateway } from 'src/task.gateway';
+import { TaskGateway } from 'src/socket/task.gateway';
+import { SocketModule } from 'src/socket/socket.module';
+import { EventsModule } from 'src/socket/events.module';
 
 @Module({
   imports: [
@@ -21,6 +23,7 @@ import { TaskGateway } from 'src/task.gateway';
       LoginSession,
       Notification,
     ]),
+    // EventsModule,
   ],
   controllers: [TaskController],
   providers: [TaskService, NotificationService],

@@ -12,7 +12,8 @@ import { AccessTokenGuard } from './common/guards/access-token.guard';
 import { UserModule } from './user/user.module';
 import { NotificationModule } from './notification/notification.module';
 import * as admin from 'firebase-admin';
-import { TaskGateway } from './task.gateway';
+import { SocketModule } from './socket/socket.module';
+import { EventsModule } from './socket/events.module';
 
 config();
 
@@ -24,6 +25,8 @@ config();
     RoomModule,
     TaskModule,
     UserModule,
+    SocketModule,
+    EventsModule,
     NotificationModule,
   ],
   controllers: [],
@@ -32,9 +35,7 @@ config();
       provide: APP_GUARD,
       useClass: AccessTokenGuard,
     },
-    TaskGateway,
   ],
-  exports: [TaskGateway],
 })
 export class AppModule {
   constructor() {}

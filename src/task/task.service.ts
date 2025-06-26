@@ -17,7 +17,7 @@ import { User } from 'src/auth/entities/user.entity';
 import { Room } from 'src/room/entities/room.entity';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { NotificationService } from 'src/notification/notification.service';
-import { TaskGateway } from 'src/task.gateway';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class TaskService implements TaskServiceInterface {
@@ -31,6 +31,7 @@ export class TaskService implements TaskServiceInterface {
     @InjectRepository(UserRoom)
     private userRoomRepository: Repository<UserRoom>,
     private notificationService: NotificationService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   // Only owner can assign task
@@ -115,7 +116,7 @@ export class TaskService implements TaskServiceInterface {
         },
       },
     });
-    console.log('room tasks', tasks);
+    // console.log('room tasks', tasks);
     return tasks;
   }
 
@@ -263,13 +264,15 @@ export class TaskService implements TaskServiceInterface {
         },
       );
     }
-    // existTask = await this.taskRepository.findOne({
-    //   where: { id: taskId },
-    //   relations: ['room', 'user'],
-    // });
+    existTask = await this.taskRepository.findOne({
+      where: { id: taskId },
+      relations: ['room', 'user'],
+    });
 
-    // send socket
-    // this.taskGateway.emitTaskUpdatedToRoom(existTask.room.id, existTask);
+    console.log('call event emitter, then emit to socket');
+
+    // call event emitter, then emit to socket
+    this.eventEmitter.emit('task.updated', existTask);
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -347,6 +350,7 @@ export class TaskService implements TaskServiceInterface {
         `Task "${taskDb.title}" in room "${taskDb.room.name}" is DONE`,
       );
     }
+    // console.log('taskDb', taskDb);
 
     return taskDb;
   }

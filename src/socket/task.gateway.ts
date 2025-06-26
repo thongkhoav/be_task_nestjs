@@ -6,18 +6,29 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { TaskService } from './task/task.service';
-import { UpdateStatusTaskDTO } from './task/dto/update-task-status.dto';
-import { Task, TaskStatus } from './task/entities/task.entity';
-import { Injectable } from '@nestjs/common';
+import { TaskService } from '../task/task.service';
+import { UpdateStatusTaskDTO } from '../task/dto/update-task-status.dto';
+import { Task, TaskStatus } from '../task/entities/task.entity';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 @WebSocketGateway({ cors: true })
-export class TaskGateway {
+export class TaskGateway implements OnModuleInit {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly taskService: TaskService) {}
+  constructor(
+    private readonly taskService: TaskService,
+    private eventEmitter: EventEmitter2,
+  ) {}
+
+  onModuleInit() {
+    this.eventEmitter.on('task.updated', (task: Task) => {
+      console.log(`Task updated event-emitter: ${task.id}`);
+      this.server.to(task.room.id).emit('task_updated', task);
+    });
+  }
 
   @SubscribeMessage('join_room')
   handleJoinRoom(
@@ -32,6 +43,7 @@ export class TaskGateway {
   async handleTaskUpdate(
     @MessageBody() data: { taskId: string; status: string; curUserId: string },
   ) {
+    console.log('socket update_task', data);
     if (
       !data.curUserId ||
       !data.taskId ||

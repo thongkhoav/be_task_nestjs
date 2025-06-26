@@ -15,16 +15,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         autoLoadEntities: true,
         synchronize: true,
         // set ssl false in development, true in production
-        // ssl:
-        //   config.get('NODE_ENV') === 'production'
-        //     ? { rejectUnauthorized: false }
-        //     : false,
-        ssl: true,
-        extra: {
-          ssl: {
-            rejectUnauthorized: false, // ✅ disables cert validation (for development)
-          },
-        },
+        ssl:
+          config.get('NODE_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
+        // Optionally, you can add more TypeORM options here
       }),
       inject: [ConfigService],
     }),
