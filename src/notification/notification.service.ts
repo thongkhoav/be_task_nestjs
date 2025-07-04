@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { UpdateFcmTokenDto } from './dto/update-notification.dto';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { LoginSession } from 'src/auth/entities/login-session.entity';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, LessThan, Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from 'src/auth/entities/user.entity';
 
@@ -88,15 +88,14 @@ export class NotificationService {
     }
   }
 
-  async updateFcmToken(updateFcmTokenDto: UpdateFcmTokenDto) {
+  async updateFcmToken(updateFcmTokenDto: {
+    fcmToken: string;
+    refreshToken: string;
+    userId: string;
+  }) {
     try {
       await this.entityManager.transaction(async (manager) => {
-        // invalid existing fcm token
-        await manager.softDelete(LoginSession, {
-          user: { id: updateFcmTokenDto.userId },
-          fcmToken: updateFcmTokenDto.fcmToken,
-        });
-
+        console.log('updateFcmTokenDto', updateFcmTokenDto);
         const loginSession = await manager.findOne(LoginSession, {
           where: {
             refreshToken: updateFcmTokenDto.refreshToken,

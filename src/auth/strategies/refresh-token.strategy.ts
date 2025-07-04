@@ -19,34 +19,49 @@ export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
       secretOrKey: config.get<string>('REFRESH_TOKEN_SECRET'),
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {
-          let data: Tokens =
-            request?.cookies[this.config.get('COOKIE_AUTH', 'Authentication')];
+          console.log('rt jwt strategy', request.cookies);
+
+          let data =
+            request?.cookies[this.config.get('COOKIE_AUTH', 'AccessToken')];
+          console.log({ data });
+
           if (!data) {
             return null;
           }
-          return data.access_token;
+          // data = JSON.parse(data);
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+          }
+
+          return data.refresh_token;
         },
       ]),
     });
   }
 
-  async validate(req: Request, payload: any) {
+  validate(req: Request, payload: JwtPayload): JwtPayloadWithRt {
+    const cookieName = this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens');
+    console.log('cookie', req?.cookies);
+    const tokens = req?.cookies[cookieName];
+
+    if (!tokens) {
+      throw new BadRequestException('No tokens found in cookies');
+    }
     if (!payload) {
-      throw new BadRequestException('invalid jwt token');
+      throw new BadRequestException('Invalid JWT token');
     }
-    let data: Tokens =
-      req?.cookies[this.config.get('COOKIE_AUTH', 'Authentication')];
-    if (!data?.refresh_token) {
-      throw new BadRequestException('invalid refresh token');
+    const parseTokens: Tokens = JSON.parse(tokens);
+    if (!parseTokens.access_token) {
+      throw new BadRequestException('Invalid access token');
     }
-    let user = await this.authService.validRefreshToken(
-      payload.email,
-      data.refresh_token,
-    );
-    if (!user) {
-      throw new BadRequestException('Token expired. Please login');
+    if (!parseTokens.refresh_token) {
+      throw new BadRequestException('Invalid refresh token');
     }
 
-    return user;
+    return {
+      ...payload,
+      refreshToken: parseTokens.refresh_token,
+      accessToken: parseTokens.access_token,
+    };
   }
 }

@@ -5,13 +5,5 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class UpdateFcmTokenDto {
   @IsString()
   @IsNotEmpty()
-  refreshToken: string;
-
-  @IsString()
-  @IsNotEmpty()
   fcmToken: string;
-
-  @IsString()
-  @IsNotEmpty()
-  userId: string;
 }

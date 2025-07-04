@@ -23,6 +23,7 @@ import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { GetRequestData } from 'src/common/decorators/get-request-data.decorator';
 
 @Controller({ version: '1', path: 'auth' })
 export class AuthController {
@@ -59,12 +60,18 @@ export class AuthController {
   ): Promise<any> {
     var tokens = await this.authService.login(dto);
 
-    res.cookie(this.config.get('COOKIE_AUTH', 'Authentication'), tokens, {
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      httpOnly: false, // set to true in production
-      secure: true, // set to true in production
-      sameSite: 'none', // set to 'none' in production
-    });
+    res.cookie(
+      this.config.get('COOKIE_AUTH', 'TaskApp_Tokens'),
+      JSON.stringify(tokens),
+      {
+        maxAge:
+          this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
+          1000, // 7 days
+        // maxAge: 1000 * 60 *
+        httpOnly: true, // set to true in production
+        secure: true, // set to true in production
+      },
+    );
 
     return tokens;
   }
@@ -74,19 +81,25 @@ export class AuthController {
   async logout(
     @Req() req,
     @Res({ passthrough: true }) res,
-    @Body() dto: Tokens,
+    @GetRequestData('refreshToken') refreshToken: string,
+    @GetRequestData('accessToken') accessToken: string,
   ): Promise<string> {
     try {
       const curUserId = req?.user?.id;
       if (!curUserId) {
         throw new BadRequestException('User not found');
       }
-      await this.authService.logout(
-        curUserId,
-        dto.refresh_token,
-        dto.access_token,
-      );
-      res.clearCookie(this.config.get('COOKIE_AUTH', 'Authentication'));
+      if (!refreshToken || !accessToken) {
+        throw new BadRequestException('Tokens not found');
+      }
+      await this.authService.logout(curUserId, refreshToken, accessToken);
+      // clear cookies
+      res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
+        maxAge: 0, // clear cookies
+        httpOnly: true, // set to true in production
+        secure: true, // set to true in production
+      });
+
       return 'Logged out';
     } catch (error) {
       throw new BadRequestException(error.message);
@@ -104,27 +117,32 @@ export class AuthController {
     }
   }
 
-  // @Public()
-  // @UseGuards(RefreshTokenGuard)
-  // @Post('refresh')
-  // @HttpCode(HttpStatus.OK)
-  // refreshTokens(
-  //   @GetCurrentUserId() userId: number,
-  //   @GetCurrentUser('refreshToken') refreshToken: string,
-  // ): Promise<Tokens> {
-  // res.cookie('access_token', tokens.access_token, {
-  //   maxAge: 1000 * 60 * 60 * 24 * 7,
-  //   httpOnly: true,
-  //   secure: true,
-  //   sameSite: 'none',
-  // });
-
-  // res.cookie('refresh_token', tokens.refresh_token, {
-  //   maxAge: 1000 * 60 * 60 * 24 * 7,
-  //   httpOnly: true,
-  //   secure: true,
-  //   sameSite: 'none',
-  // });
-  //   return this.authService.refreshTokens(userId, refreshToken);
-  // }
+  @Public()
+  @UseGuards(RefreshTokenGuard)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshTokens(
+    @Res({ passthrough: true }) res,
+    @GetCurrentUserId() userId: string,
+    @GetCurrentUser('refreshToken') refreshToken: string,
+    @GetCurrentUser('accessToken') accessToken: string,
+  ): Promise<Tokens> {
+    const tokens = await this.authService.refreshAccessToken(
+      userId,
+      refreshToken,
+      accessToken,
+    );
+    res.cookie(
+      this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'),
+      JSON.stringify(tokens),
+      {
+        maxAge:
+          this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
+          1000,
+        httpOnly: true, // set to true in production
+        secure: true, // set to true in production
+      },
+    );
+    return tokens;
+  }
 }

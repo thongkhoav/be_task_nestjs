@@ -14,6 +14,7 @@ import {
 import { NotificationService } from './notification.service';
 import { Public } from 'src/common/decorators';
 import { UpdateFcmTokenDto } from './dto/update-notification.dto';
+import { GetRequestData } from 'src/common/decorators/get-request-data.decorator';
 
 @Controller({ version: '1', path: 'notification' })
 export class NotificationController {
@@ -64,8 +65,23 @@ export class NotificationController {
   @Patch('update-fcm-token')
   async updateFcmToken(
     @Body()
-    updateFcmTokenDto: UpdateFcmTokenDto,
+    dto: UpdateFcmTokenDto,
+    @GetRequestData('refreshToken') refreshToken: string,
+    @Req() req,
   ) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!refreshToken) {
+      throw new BadRequestException('Refresh token not found');
+    }
+    const updateFcmTokenDto = {
+      fcmToken: dto.fcmToken,
+      refreshToken,
+      userId: curUserId,
+    };
     await this.notificationService.updateFcmToken(updateFcmTokenDto);
     return {
       message: 'Fcm token updated',

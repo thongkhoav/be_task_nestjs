@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
 import { AuthDto } from './dto';
-import { Tokens } from './types';
+import { AuthError, JwtPayload, Tokens } from './types';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 const bcrypt = require('bcrypt');
@@ -90,8 +90,7 @@ export class AuthService {
 
     const accessToken = await this.createAccessToken(user);
     const [refreshToken, refreshTokenExp] = await this.createNewRefreshToken(
-      user.id.toString(),
-      accessToken,
+      user,
     );
     const newLoginSession = new LoginSession({
       user,
@@ -111,6 +110,12 @@ export class AuthService {
   ): Promise<void> {
     const loginSession = await this.loginSessionRepository.findOne({
       where: { refreshToken, accessToken, user: { id: userId } },
+    });
+    console.log('logout: ', {
+      userId,
+      refreshToken,
+      accessToken,
+      loginSession,
     });
     if (!loginSession) {
       throw new UnauthorizedException('Invalid token');
@@ -143,65 +148,77 @@ export class AuthService {
     }
   }
 
-  private async createNewRefreshToken(
-    userId: string,
-    accessToken: string,
-  ): Promise<[string, Date]> {
+  private async createNewRefreshToken(user: User): Promise<[string, Date]> {
     const date = new Date();
     const rfDuration = await this.config.get('REFRESH_TOKEN_DURATION');
     if (!rfDuration || isNaN(Number(rfDuration))) {
       throw new ForbiddenException('Secrets not found');
     }
-    const refreshToken = `${uuidv4()}-${uuidv4()}`;
+    const payload: JwtPayload = {
+      email: user.email,
+      sub: user.id,
+      role: user.role.title,
+      fullName: user.fullName,
+    };
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.config.get<string>('REFRESH_TOKEN_SECRET'),
+      expiresIn: this.config.get<string>('REFRESH_TOKEN_DURATION'), //
+    });
 
     const refreshTokenExp = new Date(
-      date.getTime() + Number(rfDuration) * 60000,
+      date.getTime() + Number(rfDuration) * 1000,
     );
 
     return [refreshToken, refreshTokenExp];
   }
 
-  async refreshAccessToken(tokenDto: Tokens): Promise<Tokens> {
+  async refreshAccessToken(
+    userId: string,
+    refreshToken: string,
+    accessToken: string,
+  ): Promise<Tokens> {
+    console.log('refreshAccessToken: ', {
+      userId,
+      refreshToken,
+      accessToken,
+    });
     const loginSession = await this.loginSessionRepository.findOne({
       where: {
-        refreshToken: tokenDto.refresh_token,
-        accessToken: tokenDto.access_token,
+        refreshToken: refreshToken,
+        accessToken: accessToken,
+        user: { id: userId },
       },
-      relations: ['user'],
+      relations: ['user', 'user.role'],
     });
+    console.log({ loginSession });
 
     if (!loginSession) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Invalid token pair');
     }
 
     if (new Date(loginSession.refreshTokenExp) < new Date()) {
       await this.loginSessionRepository.softRemove(loginSession);
-      throw new UnauthorizedException(
-        'Refresh token has expired. Please login',
-      );
-    }
-    const checkValidAccessToken =
-      loginSession.accessToken === tokenDto.access_token;
-    if (!checkValidAccessToken) {
-      throw new UnauthorizedException('Invalid access token');
+      throw new UnauthorizedException(AuthError.REFRESH_TOKEN_EXPIRED);
     }
 
     const newAccessToken = await this.createAccessToken(loginSession.user);
-    // create new
-    const [newRefreshToken, refreshAccessToken] =
-      await this.createNewRefreshToken(
-        loginSession.user.id.toString(),
-        newAccessToken,
-      );
-    console.log('refresh token', loginSession);
+    // create new refresh token
+    const [newRefreshToken, refreshTokenExp] = await this.createNewRefreshToken(
+      loginSession.user,
+    );
+    // console.log('refresh token', newRefreshToken);
 
     await this.loginSessionRepository.update(loginSession.id, {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      refreshTokenExp: refreshAccessToken,
+      refreshTokenExp: refreshTokenExp,
     });
 
-    return { access_token: newAccessToken, refresh_token: newRefreshToken };
+    return {
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken,
+    };
   }
 
   public async validRefreshToken(
@@ -220,6 +237,7 @@ export class AuthService {
       },
     });
 
+    // refresh token not found or expired
     if (!loginSession || new Date(loginSession.refreshTokenExp) < new Date()) {
       await this.loginSessionRepository.softRemove(loginSession);
       return null;
@@ -229,7 +247,7 @@ export class AuthService {
   }
 
   private async createAccessToken(user: User): Promise<string> {
-    const payload = {
+    const payload: JwtPayload = {
       email: user.email,
       sub: user.id,
       role: user.role.title,
