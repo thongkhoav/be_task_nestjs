@@ -45,6 +45,8 @@ export class AuthService {
     return null;
   }
 
+  getUser;
+
   async register(dto: AuthDto): Promise<void> {
     const saltRounds = 10;
     const salt = bcrypt.genSaltSync(saltRounds);

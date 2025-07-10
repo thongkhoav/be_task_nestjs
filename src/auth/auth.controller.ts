@@ -24,6 +24,7 @@ import { LoginRequestDto } from './dto/login-request.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { GetRequestData } from 'src/common/decorators/get-request-data.decorator';
+import { User } from './entities/user.entity';
 
 @Controller({ version: '1', path: 'auth' })
 export class AuthController {
@@ -32,6 +33,16 @@ export class AuthController {
     private jwtService: JwtService,
     private config: ConfigService,
   ) {}
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getMe(@Req() req): Promise<User> {
+    const curUserId = req?.user?.id;
+    if (!curUserId) {
+      throw new BadRequestException('User not found');
+    }
+    return this.authService.getUserById(curUserId);
+  }
 
   @Public()
   @Post('signup')
@@ -68,8 +79,8 @@ export class AuthController {
           this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
           1000, // 7 days
         // maxAge: 1000 * 60 *
-        httpOnly: true, // set to true in production
-        secure: true, // set to true in production
+        httpOnly: false, // set to true in production
+        secure: false, // set to true in production
       },
     );
 
@@ -96,8 +107,8 @@ export class AuthController {
       // clear cookies
       res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
         maxAge: 0, // clear cookies
-        httpOnly: true, // set to true in production
-        secure: true, // set to true in production
+        httpOnly: false, // set to true in production
+        secure: false, // set to true in production
       });
 
       return 'Logged out';
@@ -139,8 +150,8 @@ export class AuthController {
         maxAge:
           this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
           1000,
-        httpOnly: true, // set to true in production
-        secure: true, // set to true in production
+        httpOnly: false, // set to true in production
+        secure: false, // set to true in production
       },
     );
     return tokens;
