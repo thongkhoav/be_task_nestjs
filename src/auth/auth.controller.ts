@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   Version,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -18,7 +19,7 @@ import {
   Public,
 } from 'src/common/decorators';
 import { AuthDto } from './dto';
-import { Tokens } from './types';
+import { AuthError, JwtPayloadWithRt, Tokens } from './types';
 import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -72,15 +73,14 @@ export class AuthController {
     var tokens = await this.authService.login(dto);
 
     res.cookie(
-      this.config.get('COOKIE_AUTH', 'TaskApp_Tokens'),
+      this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'),
       JSON.stringify(tokens),
       {
         maxAge:
-          this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
-          1000, // 7 days
+          +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000, // 7 days
         // maxAge: 1000 * 60 *
-        httpOnly: false, // set to true in production
-        secure: false, // set to true in production
+        httpOnly: false,
+        secure: false,
       },
     );
 
@@ -92,23 +92,22 @@ export class AuthController {
   async logout(
     @Req() req,
     @Res({ passthrough: true }) res,
-    @GetRequestData('refreshToken') refreshToken: string,
-    @GetRequestData('accessToken') accessToken: string,
+    @Body() body: { fcmToken: string },
   ): Promise<string> {
     try {
       const curUserId = req?.user?.id;
       if (!curUserId) {
         throw new BadRequestException('User not found');
       }
-      if (!refreshToken || !accessToken) {
-        throw new BadRequestException('Tokens not found');
+      if (body.fcmToken) {
+        await this.authService.logout(curUserId, body.fcmToken);
       }
-      await this.authService.logout(curUserId, refreshToken, accessToken);
+
       // clear cookies
       res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
         maxAge: 0, // clear cookies
-        httpOnly: false, // set to true in production
-        secure: false, // set to true in production
+        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
+        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
       });
 
       return 'Logged out';
@@ -134,24 +133,32 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refreshTokens(
     @Res({ passthrough: true }) res,
+    @Body() body: { fcmToken: string },
     @GetCurrentUserId() userId: string,
     @GetCurrentUser('refreshToken') refreshToken: string,
-    @GetCurrentUser('accessToken') accessToken: string,
   ): Promise<Tokens> {
-    const tokens = await this.authService.refreshAccessToken(
-      userId,
-      refreshToken,
-      accessToken,
-    );
+    const now = Math.floor(Date.now() / 1000);
+    const decoded = this.jwtService.decode(refreshToken);
+    if (!decoded || !decoded.sub || decoded.exp < now) {
+      res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
+        maxAge: 0, // clear cookies
+        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
+        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
+      });
+      if (body.fcmToken) {
+        await this.authService.logout(userId, body.fcmToken);
+      }
+      throw new ForbiddenException(AuthError.REFRESH_TOKEN_EXPIRED);
+    }
+    const tokens = await this.authService.refreshAccessToken(userId);
     res.cookie(
       this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'),
       JSON.stringify(tokens),
       {
         maxAge:
-          this.config.get<number>('REFRESH_TOKEN_DURATION', 60 * 60 * 24 * 7) *
-          1000,
-        httpOnly: false, // set to true in production
-        secure: false, // set to true in production
+          +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000,
+        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
+        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
       },
     );
     return tokens;
