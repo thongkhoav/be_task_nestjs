@@ -66,7 +66,6 @@ export class NotificationController {
   async updateFcmToken(
     @Body()
     dto: UpdateFcmTokenDto,
-    @GetRequestData('refreshToken') refreshToken: string,
     @Req() req,
   ) {
     const curUserId = req?.user?.id;
@@ -74,12 +73,8 @@ export class NotificationController {
       throw new UnauthorizedException('User not found');
     }
 
-    if (!refreshToken) {
-      throw new BadRequestException('Refresh token not found');
-    }
     const updateFcmTokenDto = {
       fcmToken: dto.fcmToken,
-      refreshToken,
       userId: curUserId,
     };
     await this.notificationService.updateFcmToken(updateFcmTokenDto);

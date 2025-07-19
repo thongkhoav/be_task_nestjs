@@ -14,12 +14,23 @@ import { NotificationModule } from './notification/notification.module';
 import * as admin from 'firebase-admin';
 import { SocketModule } from './socket/socket.module';
 import { EventsModule } from './socket/events.module';
+import { BullModule } from '@nestjs/bullmq';
 
 config();
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get('REDIS_HOST'),
+          port: +config.get('REDIS_PORT'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     DatabaseModule,
     AuthModule,
     RoomModule,
