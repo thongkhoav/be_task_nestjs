@@ -45,8 +45,6 @@ export class AuthService {
     return null;
   }
 
-  getUser;
-
   async register(dto: AuthDto): Promise<void> {
     const saltRounds = 10;
     const salt = bcrypt.genSaltSync(saltRounds);
@@ -123,6 +121,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token');
     }
     await this.loginSessionRepository.softRemove(loginSession);
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+
+    const token = this.jwtService.sign(
+      { userId: user.id },
+      { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+    );
+
+    const resetLink = `${process.env.FRONTEND_URL}/forgot-password?token=${token}`;
+    // await this.mailService.sendMail({
+    //   to: user.email,
+    //   subject: 'Reset your password',
+    //   html: `<a href="${resetLink}">Click to reset your password</a>`,
+    // });
   }
 
   async getUserFromToken(token: string): Promise<User | null> {

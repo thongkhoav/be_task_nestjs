@@ -25,6 +25,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { GetRequestData } from 'src/common/decorators/get-request-data.decorator';
 import { User } from './entities/user.entity';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller({ version: '1', path: 'auth' })
 export class AuthController {
@@ -42,6 +44,44 @@ export class AuthController {
       throw new BadRequestException('User not found');
     }
     return this.authService.getUserById(curUserId);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.CREATED)
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<string> {
+    try {
+      let isExist = await this.authService.isExistEmail(dto.email);
+      if (!isExist) {
+        throw new BadRequestException('User with this email does not exist');
+      }
+      await this.authService.requestPasswordReset(dto.email);
+      return 'Password reset link sent to your email';
+    } catch (error) {
+      console.log(error);
+
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    const { token, newPassword } = body;
+
+    // try {
+    //   const payload = this.jwtService.verify(token, {
+    //     secret: process.env.JWT_RESET_SECRET,
+    //   });
+    //   const user = await this.userRepository.findOne({
+    //     where: { id: payload.userId },
+    //   });
+
+    //   user.password = await hash(newPassword, 10); // or bcrypt.hash()
+    //   await this.userRepository.save(user);
+    //   return { message: 'Password reset successfully' };
+    // } catch (err) {
+    //   throw new BadRequestException('Invalid or expired token');
+    // }
   }
 
   @Public()
