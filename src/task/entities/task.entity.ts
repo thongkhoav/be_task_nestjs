@@ -18,7 +18,8 @@ export class Task extends AbstractEntity<Task> {
   @Column()
   description: string;
 
-  @Column()
+  // with timezone
+  @Column({ type: 'timestamptz', nullable: true })
   dueDate: Date;
 
   @Column({ default: TaskStatus.TODO })

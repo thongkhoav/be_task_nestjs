@@ -20,5 +20,5 @@ export class CreateTaskDto {
   roomId: string;
 
   @IsString()
-  userId: string;
+  userId: string; // assigned user
 }
