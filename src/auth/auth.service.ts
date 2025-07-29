@@ -7,7 +7,7 @@ import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
 import { AuthDto } from './dto';
-import { AuthError, JwtPayload, Tokens } from './types';
+import { JwtPayload, Tokens } from './types';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 const bcrypt = require('bcrypt');
@@ -44,8 +44,6 @@ export class AuthService {
     }
     return null;
   }
-
-  getUser;
 
   async register(dto: AuthDto): Promise<void> {
     const saltRounds = 10;
@@ -91,38 +89,37 @@ export class AuthService {
     }
 
     const accessToken = await this.createAccessToken(user);
-    const [refreshToken, refreshTokenExp] = await this.createNewRefreshToken(
-      user,
-    );
-    const newLoginSession = new LoginSession({
-      user,
-      accessToken,
-      refreshToken,
-      refreshTokenExp,
-    });
-    await this.loginSessionRepository.save(newLoginSession);
+    const refreshToken = await this.createNewRefreshToken(user);
 
     return { access_token: accessToken, refresh_token: refreshToken };
   }
 
-  async logout(
-    userId: string,
-    refreshToken: string,
-    accessToken: string,
-  ): Promise<void> {
+  async logout(userId: string, fcmToken: string): Promise<void> {
     const loginSession = await this.loginSessionRepository.findOne({
-      where: { refreshToken, accessToken, user: { id: userId } },
+      where: { fcmToken: fcmToken, user: { id: userId } },
     });
     console.log('logout: ', {
       userId,
-      refreshToken,
-      accessToken,
+      fcmToken,
       loginSession,
     });
-    if (!loginSession) {
-      throw new UnauthorizedException('Invalid token');
-    }
     await this.loginSessionRepository.softRemove(loginSession);
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+
+    const token = this.jwtService.sign(
+      { userId: user.id },
+      { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+    );
+
+    const resetLink = `${process.env.FRONTEND_URL}/forgot-password?token=${token}`;
+    // await this.mailService.sendMail({
+    //   to: user.email,
+    //   subject: 'Reset your password',
+    //   html: `<a href="${resetLink}">Click to reset your password</a>`,
+    // });
   }
 
   async getUserFromToken(token: string): Promise<User | null> {
@@ -150,12 +147,7 @@ export class AuthService {
     }
   }
 
-  private async createNewRefreshToken(user: User): Promise<[string, Date]> {
-    const date = new Date();
-    const rfDuration = await this.config.get('REFRESH_TOKEN_DURATION');
-    if (!rfDuration || isNaN(Number(rfDuration))) {
-      throw new ForbiddenException('Secrets not found');
-    }
+  private async createNewRefreshToken(user: User): Promise<string> {
     const payload: JwtPayload = {
       email: user.email,
       sub: user.id,
@@ -165,57 +157,22 @@ export class AuthService {
 
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: this.config.get<string>('REFRESH_TOKEN_SECRET'),
-      expiresIn: this.config.get<string>('REFRESH_TOKEN_DURATION'), //
+      expiresIn: this.config.get<string>('REFRESH_TOKEN_DURATION', '7d'),
     });
 
-    const refreshTokenExp = new Date(
-      date.getTime() + Number(rfDuration) * 1000,
-    );
-
-    return [refreshToken, refreshTokenExp];
+    return refreshToken;
   }
 
-  async refreshAccessToken(
-    userId: string,
-    refreshToken: string,
-    accessToken: string,
-  ): Promise<Tokens> {
-    console.log('refreshAccessToken: ', {
-      userId,
-      refreshToken,
-      accessToken,
+  async refreshAccessToken(userId: string): Promise<Tokens> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['id', 'password', 'email', 'fullName', 'role'],
+      relations: ['role'],
     });
-    const loginSession = await this.loginSessionRepository.findOne({
-      where: {
-        refreshToken: refreshToken,
-        accessToken: accessToken,
-        user: { id: userId },
-      },
-      relations: ['user', 'user.role'],
-    });
-    console.log({ loginSession });
 
-    if (!loginSession) {
-      throw new UnauthorizedException('Invalid token pair');
-    }
-
-    if (new Date(loginSession.refreshTokenExp) < new Date()) {
-      await this.loginSessionRepository.softRemove(loginSession);
-      throw new UnauthorizedException(AuthError.REFRESH_TOKEN_EXPIRED);
-    }
-
-    const newAccessToken = await this.createAccessToken(loginSession.user);
+    const newAccessToken = await this.createAccessToken(user);
     // create new refresh token
-    const [newRefreshToken, refreshTokenExp] = await this.createNewRefreshToken(
-      loginSession.user,
-    );
-    // console.log('refresh token', newRefreshToken);
-
-    await this.loginSessionRepository.update(loginSession.id, {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-      refreshTokenExp: refreshTokenExp,
-    });
+    const newRefreshToken = await this.createNewRefreshToken(user);
 
     return {
       access_token: newAccessToken,
@@ -223,30 +180,30 @@ export class AuthService {
     };
   }
 
-  public async validRefreshToken(
-    email: string,
-    refreshToken: string,
-  ): Promise<any> {
-    let user = await this.userRepo.findOne({
-      where: {
-        email: email,
-      },
-    });
-    let loginSession = await this.loginSessionRepository.findOne({
-      where: {
-        refreshToken: refreshToken,
-        user: user,
-      },
-    });
+  // public async validRefreshToken(
+  //   email: string,
+  //   refreshToken: string,
+  // ): Promise<any> {
+  //   let user = await this.userRepo.findOne({
+  //     where: {
+  //       email: email,
+  //     },
+  //   });
+  //   let loginSession = await this.loginSessionRepository.findOne({
+  //     where: {
+  //       refreshToken: refreshToken,
+  //       user: user,
+  //     },
+  //   });
 
-    // refresh token not found or expired
-    if (!loginSession || new Date(loginSession.refreshTokenExp) < new Date()) {
-      await this.loginSessionRepository.softRemove(loginSession);
-      return null;
-    }
+  //   // refresh token not found or expired
+  //   if (!loginSession || new Date(loginSession.refreshTokenExp) < new Date()) {
+  //     await this.loginSessionRepository.softRemove(loginSession);
+  //     return null;
+  //   }
 
-    return loginSession;
-  }
+  //   return loginSession;
+  // }
 
   private async createAccessToken(user: User): Promise<string> {
     const payload: JwtPayload = {

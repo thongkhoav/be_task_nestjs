@@ -47,10 +47,6 @@ export class NotificationService {
         throw new Error('Invalid user');
       }
       for (const loginSession of loginSessions) {
-        if (new Date(loginSession.refreshTokenExp) < new Date()) {
-          await this.loginSessionRepository.softRemove(loginSession);
-          throw new Error('Refresh token expired');
-        }
         if (!loginSession?.fcmToken) return;
         await admin.messaging().send({
           token: loginSession.fcmToken,
@@ -90,7 +86,6 @@ export class NotificationService {
 
   async updateFcmToken(updateFcmTokenDto: {
     fcmToken: string;
-    refreshToken: string;
     userId: string;
   }) {
     try {
@@ -98,21 +93,22 @@ export class NotificationService {
         console.log('updateFcmTokenDto', updateFcmTokenDto);
         const loginSession = await manager.findOne(LoginSession, {
           where: {
-            refreshToken: updateFcmTokenDto.refreshToken,
+            fcmToken: updateFcmTokenDto.fcmToken,
             user: { id: updateFcmTokenDto.userId },
           },
         });
         if (!loginSession) {
-          throw new BadRequestException('Invalid fcm token');
-        }
-        if (new Date(loginSession.refreshTokenExp) < new Date()) {
-          throw new BadRequestException('Refresh token expired');
-        }
-        loginSession.fcmToken = updateFcmTokenDto.fcmToken;
-        console.log('loginSession', loginSession);
+          console.log('No existing login session found, creating a new one');
+          const newLoginSession = new LoginSession({
+            fcmToken: updateFcmTokenDto.fcmToken,
+            user: await manager.findOne(User, {
+              where: { id: updateFcmTokenDto.userId },
+            }),
+          });
 
-        // update current login session fcm token
-        await manager.save(loginSession);
+          // update current login session fcm token
+          await manager.save(newLoginSession);
+        }
       });
     } catch (error) {
       console.log('Error updating fcm token:', error);

@@ -18,6 +18,9 @@ import { Room } from 'src/room/entities/room.entity';
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { NotificationService } from 'src/notification/notification.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { NotificationQueue } from 'src/queues/notification.queue';
+import { LoginSession } from 'src/auth/entities/login-session.entity';
+import { delayMsCalculator } from 'src/common/util/taskSchedule';
 
 @Injectable()
 export class TaskService implements TaskServiceInterface {
@@ -30,8 +33,11 @@ export class TaskService implements TaskServiceInterface {
     private roomRepository: Repository<Room>,
     @InjectRepository(UserRoom)
     private userRoomRepository: Repository<UserRoom>,
+    @InjectRepository(LoginSession)
+    private loginSessionRepository: Repository<LoginSession>,
     private notificationService: NotificationService,
     private eventEmitter: EventEmitter2,
+    private notificationQueue: NotificationQueue,
   ) {}
 
   // Only owner can assign task
@@ -177,7 +183,8 @@ export class TaskService implements TaskServiceInterface {
     }
     console.log(newTask);
 
-    await this.taskRepository.save(newTask);
+    // save task and get task
+    const taskCreated = await this.taskRepository.save(newTask);
     console.log('Task created');
     if (task.userId) {
       await this.notificationService.sendNotificationAndSave(
@@ -185,6 +192,26 @@ export class TaskService implements TaskServiceInterface {
         'Assigned to task',
         `Assigned to task ${newTask.title} in room ${newTask.room.name}`,
       );
+      const fcmTokens = await this.loginSessionRepository.find({
+        where: { user: { id: task.userId } },
+      });
+      console.log('schedule reminder', {
+        fcmTokens,
+        duedate: new Date(task.dueDate).getTime(),
+        beforeDeadline: delayMsCalculator(task.dueDate) > 0,
+      });
+      if (fcmTokens.length > 0 && delayMsCalculator(task.dueDate) > 0) {
+        fcmTokens.forEach((token) => {
+          this.notificationQueue.scheduleReminder(
+            taskCreated.id,
+            task.userId,
+            token.fcmToken,
+            task.title,
+            room.name,
+            delayMsCalculator(task.dueDate),
+          );
+        });
+      }
     }
     return true;
   }
@@ -252,6 +279,25 @@ export class TaskService implements TaskServiceInterface {
           'Assigned to task',
           `Assigned to task ${existTask.title} in room ${existTask.room.name}`,
         );
+
+        // remove all schedule jobs of this task
+        await this.notificationQueue.removeScheduleJobs(taskId);
+        const fcmTokens = await this.loginSessionRepository.find({
+          where: { user: { id: task.userId } },
+        });
+        if (fcmTokens.length > 0 && delayMsCalculator(task.dueDate) > 0) {
+          // If user allowed to receive notifications, schedule reminder
+          fcmTokens.forEach((token) => {
+            this.notificationQueue.scheduleReminder(
+              taskId,
+              task.userId,
+              token.fcmToken,
+              task.title,
+              existTask.room.name,
+              delayMsCalculator(task.dueDate), // 30 minutes before deadline
+            );
+          });
+        }
       }
     } else {
       await this.taskRepository.update(
@@ -263,6 +309,10 @@ export class TaskService implements TaskServiceInterface {
           user: null,
         },
       );
+      if (existTask?.user) {
+        // remove all schedule jobs of this task
+        await this.notificationQueue.removeScheduleJobs(taskId);
+      }
     }
     existTask = await this.taskRepository.findOne({
       where: { id: taskId },
