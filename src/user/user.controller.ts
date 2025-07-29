@@ -11,17 +11,23 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Public } from 'src/common/decorators';
+import { NotificationQueue } from 'src/queues/notification.queue';
 
 @Controller({
   version: '1',
   path: 'user',
 })
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private notificationQueue: NotificationQueue,
+  ) {}
 
   @Public()
   @Get('test')
-  test() {
+  async test() {
+    const delay = new Date().getTime() + 1000 * 30;
+    await this.notificationQueue.scheduleTestReminder('Test Task');
     return 'user test';
   }
 

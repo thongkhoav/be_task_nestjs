@@ -98,6 +98,7 @@ export class NotificationService {
           },
         });
         if (!loginSession) {
+          console.log('No existing login session found, creating a new one');
           const newLoginSession = new LoginSession({
             fcmToken: updateFcmTokenDto.fcmToken,
             user: await manager.findOne(User, {
