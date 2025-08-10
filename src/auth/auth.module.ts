@@ -10,6 +10,8 @@ import { UserRoom } from './entities/user-room.entity';
 import { Role } from './entities/role.entity';
 import { LoginSession } from './entities/login-session.entity';
 import { Notification } from 'src/notification/entities/notification.entity';
+import { MailService } from 'src/mail/mail.service';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { Notification } from 'src/notification/entities/notification.entity';
       Notification,
       LoginSession,
     ]),
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [RtStrategy, JwtStrategy, AuthService],
