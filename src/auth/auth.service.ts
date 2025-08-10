@@ -15,6 +15,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { Role, RoleType } from './entities/role.entity';
 import { LoginSession } from './entities/login-session.entity';
+import { MailerService } from '@nestjs-modules/mailer';
+import { resetPWLink } from 'src/common/util/resetPWLink';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +31,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private dataSource: DataSource,
+    private mailService: MailService,
     @InjectEntityManager() private readonly entityManager: EntityManager,
   ) {}
 
@@ -111,15 +115,19 @@ export class AuthService {
 
     const token = this.jwtService.sign(
       { userId: user.id },
-      { secret: process.env.JWT_RESET_SECRET, expiresIn: '15m' },
+      {
+        secret: this.config.get<string>('JWT_RESET_SECRET'),
+        expiresIn: this.config.get<string>('JWT_RESET_DURATION', '15m'),
+      },
     );
 
-    const resetLink = `${process.env.FRONTEND_URL}/forgot-password?token=${token}`;
-    // await this.mailService.sendMail({
-    //   to: user.email,
-    //   subject: 'Reset your password',
-    //   html: `<a href="${resetLink}">Click to reset your password</a>`,
-    // });
+    const resetLink = resetPWLink(this.config.get<string>('FE_HOST'), token);
+    // send email with reset link
+    await this.mailService.sendMail(
+      user.email,
+      'Reset your password',
+      `<div><a href="${resetLink}">Click to reset your password</a>\n<p>The link will be valid for 15 minutes.</p></div>`,
+    );
   }
 
   async getUserFromToken(token: string): Promise<User | null> {
@@ -178,6 +186,24 @@ export class AuthService {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,
     };
+  }
+
+  async resetPassword(password: string, token: string): Promise<void> {
+    const payload = this.jwtService.verify(token, {
+      secret: this.config.get<string>('JWT_RESET_SECRET'),
+    });
+
+    const user = await this.userRepo.findOne({ where: { id: payload.userId } });
+    if (!user) {
+      throw new ForbiddenException('Invalid token or user not found');
+    }
+
+    const saltRounds = 10;
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(password, salt);
+    user.password = hash;
+
+    await this.userRepo.save(user);
   }
 
   // public async validRefreshToken(

@@ -65,24 +65,17 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('reset-password')
   async resetPassword(@Body() body: ResetPasswordDto) {
     const { token, newPassword } = body;
 
-    // try {
-    //   const payload = this.jwtService.verify(token, {
-    //     secret: process.env.JWT_RESET_SECRET,
-    //   });
-    //   const user = await this.userRepository.findOne({
-    //     where: { id: payload.userId },
-    //   });
-
-    //   user.password = await hash(newPassword, 10); // or bcrypt.hash()
-    //   await this.userRepository.save(user);
-    //   return { message: 'Password reset successfully' };
-    // } catch (err) {
-    //   throw new BadRequestException('Invalid or expired token');
-    // }
+    try {
+      await this.authService.resetPassword(newPassword, token);
+      return { message: 'Password reset successfully' };
+    } catch (err) {
+      throw new BadRequestException('Invalid or expired token');
+    }
   }
 
   @Public()

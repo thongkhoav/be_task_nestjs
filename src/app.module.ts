@@ -16,6 +16,7 @@ import { EventsModule } from './socket/events.module';
 import { BullModule } from '@nestjs/bullmq';
 
 import { UserModule } from './user/user.module';
+import { MailModule } from './mail/mail.module';
 
 config();
 
@@ -32,6 +33,7 @@ config();
       }),
       inject: [ConfigService],
     }),
+    MailModule,
     DatabaseModule,
     AuthModule,
     RoomModule,
