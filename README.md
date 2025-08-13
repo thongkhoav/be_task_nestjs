@@ -5,6 +5,7 @@
 - To run:
 
   - Complete .env based on the sample file .env.example
+  - You have to run a Redis for background reminder.
   - start : nest start
   - start:dev : nest start --watch
 
