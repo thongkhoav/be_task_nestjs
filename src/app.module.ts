@@ -14,8 +14,6 @@ import * as admin from 'firebase-admin';
 import { SocketModule } from './socket/socket.module';
 import { EventsModule } from './socket/events.module';
 import { BullModule } from '@nestjs/bullmq';
-
-import { UserModule } from './user/user.module';
 import { MailModule } from './mail/mail.module';
 
 config();
@@ -38,7 +36,6 @@ config();
     AuthModule,
     RoomModule,
     TaskModule,
-    UserModule,
     SocketModule,
     EventsModule,
     NotificationModule,
