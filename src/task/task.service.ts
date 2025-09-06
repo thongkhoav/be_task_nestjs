@@ -220,10 +220,11 @@ export class TaskService implements TaskServiceInterface {
     taskId: string,
     task: UpdateTaskDto,
   ): Promise<void> {
+    //  Updated: User can change task info without changing due date
     // check if dueDate is valid
-    if (task.dueDate < new Date()) {
-      throw new BadRequestException('Due date is invalid');
-    }
+    // if (task.dueDate < new Date()) {
+    //   throw new BadRequestException('Due date is invalid');
+    // }
 
     // check if task exists
     const existTask = await this.taskRepository.findOne({
