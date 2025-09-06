@@ -9,6 +9,12 @@
   - start : nest start
   - start:dev : nest start --watch
 
+- Run database migration:
+
+  - npm run build
+  - npm run typeorm migration:generate ./src/migrations/{name_of_migration}
+  - npm run typeorm migration:run
+
 - Notifications:
 
   - User join group by invite code -> Noti to room owner
