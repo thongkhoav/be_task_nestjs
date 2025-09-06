@@ -29,7 +29,11 @@
   - Member mark DONE task -> Noti to owner
 
 - Architect:
+
   - Github actions to build image and push to ECR
   - Run the image can use ECS, App Runner or EC2
   - Use Github Actions to SSH to EC2, then pull image from ECR and run it
   - Use event-emitter to break down TaskService and Socket circular dependency.
+
+- Chat rules:
+  - Messages remain in the channel even after the user leaves.
