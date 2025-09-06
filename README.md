@@ -2,6 +2,13 @@
 
 # FE source code: https://github.com/thongkhoav/fe_task_nextjs
 
+- Outside of API:
+
+  - Socket.io: Chat & Task status update
+  - Background job: Task reminder
+  - Email: Forgot password
+  - Firebase messaging for notification
+
 - To run:
 
   - Complete .env based on the sample file .env.example
