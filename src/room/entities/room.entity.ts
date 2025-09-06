@@ -1,5 +1,6 @@
 import { UserRoom } from 'src/auth/entities/user-room.entity';
 import { User } from 'src/auth/entities/user.entity';
+import { Message } from 'src/chat/entities/message.entity';
 import { AbstractEntity } from 'src/database/abstract.entity';
 import { Task } from 'src/task/entities/task.entity';
 import {
@@ -32,4 +33,10 @@ export class Room extends AbstractEntity<Room> {
     onDelete: 'CASCADE',
   })
   tasks: Task[];
+
+  @OneToMany(() => Message, (message) => message.room, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  messages: Message[];
 }

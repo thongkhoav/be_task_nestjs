@@ -5,6 +5,7 @@ import { Task } from 'src/task/entities/task.entity';
 import { Role } from './role.entity';
 import { LoginSession } from './login-session.entity';
 import { Notification } from 'src/notification/entities/notification.entity';
+import { Message } from 'src/chat/entities/message.entity';
 
 @Entity()
 export class User extends AbstractEntity<User> {
@@ -38,4 +39,8 @@ export class User extends AbstractEntity<User> {
   // many notifications
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  // one-to-many relationship with Message entity
+  @OneToMany(() => Message, (message) => message.sender)
+  messages: Message[];
 }
