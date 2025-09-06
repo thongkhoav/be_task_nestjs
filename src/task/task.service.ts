@@ -21,6 +21,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationQueue } from 'src/queues/notification.queue';
 import { LoginSession } from 'src/auth/entities/login-session.entity';
 import { delayMsCalculator } from 'src/common/util/taskSchedule';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TaskService implements TaskServiceInterface {
@@ -38,6 +39,7 @@ export class TaskService implements TaskServiceInterface {
     private notificationService: NotificationService,
     private eventEmitter: EventEmitter2,
     private notificationQueue: NotificationQueue,
+    private config: ConfigService,
   ) {}
 
   // Only owner can assign task
@@ -200,7 +202,10 @@ export class TaskService implements TaskServiceInterface {
         duedate: new Date(task.dueDate).getTime(),
         beforeDeadline: delayMsCalculator(task.dueDate) > 0,
       });
-      if (fcmTokens.length > 0 && delayMsCalculator(task.dueDate) > 0) {
+      const reminderBeforeDeadline =
+        this.config.get<number>('TASK_REMINDER_BEFORE_DEADLINE') || 30;
+      const delayMs = delayMsCalculator(task.dueDate, reminderBeforeDeadline);
+      if (fcmTokens.length > 0 && delayMs > 0) {
         fcmTokens.forEach((token) => {
           this.notificationQueue.scheduleReminder(
             taskCreated.id,
@@ -208,7 +213,7 @@ export class TaskService implements TaskServiceInterface {
             token.fcmToken,
             task.title,
             room.name,
-            delayMsCalculator(task.dueDate),
+            delayMs,
           );
         });
       }
@@ -286,7 +291,10 @@ export class TaskService implements TaskServiceInterface {
         const fcmTokens = await this.loginSessionRepository.find({
           where: { user: { id: task.userId } },
         });
-        if (fcmTokens.length > 0 && delayMsCalculator(task.dueDate) > 0) {
+        const reminderBeforeDeadline =
+          this.config.get<number>('TASK_REMINDER_BEFORE_DEADLINE') || 30;
+        const delayMs = delayMsCalculator(task.dueDate, reminderBeforeDeadline);
+        if (fcmTokens.length > 0 && delayMs > 0) {
           // If user allowed to receive notifications, schedule reminder
           fcmTokens.forEach((token) => {
             this.notificationQueue.scheduleReminder(
@@ -295,7 +303,7 @@ export class TaskService implements TaskServiceInterface {
               token.fcmToken,
               task.title,
               existTask.room.name,
-              delayMsCalculator(task.dueDate), // 30 minutes before deadline
+              delayMs,
             );
           });
         }

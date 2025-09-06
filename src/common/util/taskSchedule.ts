@@ -1,6 +1,8 @@
-export const timeBeforeDeadline = 2 * 60 * 1000; // 30 minutes in milliseconds
-export const delayMsCalculator = (dueDate: Date): number => {
+export const delayMsCalculator = (
+  dueDate: Date,
+  timeBeforeDeadlineInMinutes: number = 30,
+): number => {
   const now = new Date().getTime();
   const dueTime = new Date(dueDate).getTime();
-  return dueTime - now - timeBeforeDeadline; // Subtracting the time before deadline
+  return dueTime - now - timeBeforeDeadlineInMinutes * 60 * 1000; // Subtracting the time before deadline
 };

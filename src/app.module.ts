@@ -16,6 +16,7 @@ import { EventsModule } from './socket/events.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
 import { ChatModule } from './chat/chat.module';
+import { UserModule } from './user/user.module';
 
 config();
 
@@ -41,6 +42,7 @@ config();
     EventsModule,
     NotificationModule,
     ChatModule,
+    UserModule,
   ],
   controllers: [],
   providers: [
