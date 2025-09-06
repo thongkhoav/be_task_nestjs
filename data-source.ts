@@ -3,7 +3,6 @@ import * as dotenv from 'dotenv';
 
 // Load .env file before anything else
 dotenv.config();
-console.log('DB_PORT', process.env.DB_PORT);
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST,

@@ -22,13 +22,13 @@ import { NotificationTestProcessor } from 'src/processors/notificationTest.proce
           port: parseInt(process.env.REDIS_PORT, 10),
         },
       },
-      {
-        name: 'task-test',
-        connection: {
-          host: process.env.REDIS_HOST,
-          port: parseInt(process.env.REDIS_PORT, 10),
-        },
-      },
+      // {
+      //   name: 'task-test',
+      //   connection: {
+      //     host: process.env.REDIS_HOST,
+      //     port: parseInt(process.env.REDIS_PORT, 10),
+      //   },
+      // },
     ),
   ],
   controllers: [NotificationController],

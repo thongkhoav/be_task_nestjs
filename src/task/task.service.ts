@@ -86,6 +86,7 @@ export class TaskService implements TaskServiceInterface {
     }
     await this.taskRepository.update({ id: taskId }, { user: { id: userId } });
 
+    // notify to assigned user
     await this.notificationService.sendNotificationAndSave(
       userId,
       'Assigned to task',
@@ -279,9 +280,19 @@ export class TaskService implements TaskServiceInterface {
           user: { id: task.userId },
         },
       );
-      if (existTask?.user?.id !== task.userId) {
+      if (
+        existTask?.user?.id !== task.userId ||
+        task.dueDate !== existTask.dueDate
+      ) {
+        let notifyUserId;
+        if (existTask?.user?.id !== task.userId) {
+          notifyUserId = task.userId;
+        } else if (task.dueDate !== existTask.dueDate) {
+          notifyUserId = existTask?.user?.id;
+        }
+
         await this.notificationService.sendNotificationAndSave(
-          task.userId,
+          notifyUserId,
           'Assigned to task',
           `Assigned to task ${existTask.title} in room ${existTask.room.name}`,
         );
@@ -289,7 +300,7 @@ export class TaskService implements TaskServiceInterface {
         // remove all schedule jobs of this task
         await this.notificationQueue.removeScheduleJobs(taskId);
         const fcmTokens = await this.loginSessionRepository.find({
-          where: { user: { id: task.userId } },
+          where: { user: { id: notifyUserId } },
         });
         const reminderBeforeDeadline =
           this.config.get<number>('TASK_REMINDER_BEFORE_DEADLINE') || 30;
@@ -299,7 +310,7 @@ export class TaskService implements TaskServiceInterface {
           fcmTokens.forEach((token) => {
             this.notificationQueue.scheduleReminder(
               taskId,
-              task.userId,
+              notifyUserId,
               token.fcmToken,
               task.title,
               existTask.room.name,

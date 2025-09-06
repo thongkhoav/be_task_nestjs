@@ -112,8 +112,8 @@ export class AuthController {
         maxAge:
           +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000, // 7 days
         // maxAge: 1000 * 60 *
-        httpOnly: false,
-        secure: false,
+        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
+        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
       },
     );
 

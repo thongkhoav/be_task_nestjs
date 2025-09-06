@@ -16,9 +16,6 @@ export class User extends AbstractEntity<User> {
   @Column({ select: false })
   password: string;
 
-  @Column({ default: false, select: false })
-  isVerified: boolean;
-
   // full name
   @Column()
   fullName: string;
