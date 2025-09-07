@@ -112,8 +112,9 @@ export class AuthController {
         maxAge:
           +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000, // 7 days
         sameSite: 'none',
-        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
-        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
+        httpOnly:
+          this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
+        secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
       },
     );
 
@@ -140,8 +141,9 @@ export class AuthController {
       res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
         maxAge: 0, // clear cookies
         sameSite: 'none',
-        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
-        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
+        httpOnly:
+          this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
+        secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
       });
 
       return 'Logged out';
@@ -177,8 +179,9 @@ export class AuthController {
       res.cookie(this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'), '', {
         maxAge: 0, // clear cookies
         sameSite: 'none',
-        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
-        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
+        httpOnly:
+          this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
+        secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
       });
       if (body.fcmToken) {
         await this.authService.logout(userId, body.fcmToken);
@@ -193,8 +196,9 @@ export class AuthController {
         sameSite: 'none',
         maxAge:
           +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000,
-        httpOnly: this.config.get<boolean>('Cookie_HttpOnly', false), // set to true in production
-        secure: this.config.get<boolean>('Cookie_Secure', false), // set to true in production
+        httpOnly:
+          this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
+        secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
       },
     );
     return tokens;
