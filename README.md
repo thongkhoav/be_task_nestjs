@@ -40,5 +40,10 @@
   - Messages remain in the channel even after the user leaves.
 
 - Docker run:
+
   - If redis is running in docker, make redis container and backend container use the same network
   - docker network create mynetwork
+  - docker run -dp 6379:6379 --name be-redis redis
+
+- AWS linux 2023 github-runner:
+  - sudo yum install -y libicu

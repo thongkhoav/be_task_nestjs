@@ -53,7 +53,7 @@ jobs:
       - name: Run migrations
         run: |
           docker run --rm \
-            --env-file /home/ec2-user/myapp/.env \
+            --env-file /home/ec2-user/backend/.env \
             ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest \
             npm run typeorm:prod migration:run
 
@@ -61,7 +61,7 @@ jobs:
         run: |
           docker stop backend || true
           docker rm backend || true
-          docker run -d --env-file /home/ec2-user/myapp/.env \
+          docker run -d --env-file /home/ec2-user/backend/.env \
             -p 3333:3333 \
             --network mynetwork \
             --name backend \
