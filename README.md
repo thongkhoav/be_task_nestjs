@@ -36,4 +36,9 @@
   - Use event-emitter to break down TaskService and Socket circular dependency.
 
 - Chat rules:
+
   - Messages remain in the channel even after the user leaves.
+
+- Docker run:
+  - If redis is running in docker, make redis container and backend container use the same network
+  - docker network create mynetwork
