@@ -13,7 +13,7 @@ import { Public } from 'src/common/decorators';
 export class HealthController {
   // Public endpoint to check health status
   @Public()
-  @Get()
+  @Get('/')
   findAll() {
     return { status: 'ok' };
   }

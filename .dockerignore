@@ -6,7 +6,6 @@ yarn-error.log
 .gitignore
 dist
 coverage
-*.ts
 *.map
 .vscode
 .idea
