@@ -7,10 +7,7 @@ import { Queue } from 'bullmq';
 export class NotificationQueue {
   // private queue: Queue;
 
-  constructor(
-    @InjectQueue('task-deadline') private queue: Queue,
-    @InjectQueue('task-test') private queueTest: Queue,
-  ) {
+  constructor(@InjectQueue('task-deadline') private queue: Queue) {
     // this.queue = new Queue('task-deadline', {
     //   connection: {
     //     host: this.config.get('REDIS_HOST'),
@@ -75,27 +72,27 @@ export class NotificationQueue {
     }
   }
 
-  async scheduleTestReminder(taskTitle: string) {
-    const jobId = `test-reminder--${new Date().getTime().toString()}`;
-    console.log(
-      `Scheduling test reminder with ID: ${jobId}  for task: ${taskTitle}`,
-    );
-    // delay 30s
-    const delayMs = 20 * 1000; // 30 seconds in milliseconds
+  // async scheduleTestReminder(taskTitle: string) {
+  //   const jobId = `test-reminder--${new Date().getTime().toString()}`;
+  //   console.log(
+  //     `Scheduling test reminder with ID: ${jobId}  for task: ${taskTitle}`,
+  //   );
+  //   // delay 30s
+  //   const delayMs = 20 * 1000; // 30 seconds in milliseconds
 
-    await this.queueTest.add(
-      'send-test-reminder',
-      {
-        taskTitle,
-        message: `This is a test reminder for task: ${taskTitle}`,
-      },
-      {
-        delay: delayMs, // Delay in milliseconds
-        attempts: 3, // Number of retry attempts
-        jobId,
-        removeOnComplete: true,
-        removeOnFail: true,
-      },
-    );
-  }
+  //   await this.queueTest.add(
+  //     'send-test-reminder',
+  //     {
+  //       taskTitle,
+  //       message: `This is a test reminder for task: ${taskTitle}`,
+  //     },
+  //     {
+  //       delay: delayMs, // Delay in milliseconds
+  //       attempts: 3, // Number of retry attempts
+  //       jobId,
+  //       removeOnComplete: true,
+  //       removeOnFail: true,
+  //     },
+  //   );
+  // }
 }
