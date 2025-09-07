@@ -51,9 +51,11 @@ jobs:
         run: docker pull ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
       - name: Run migrations
-        run: docker run --rm --env-file /home/ec2-user/myapp/.env \
-          ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest \
-          npm run typeorm migration:run
+        run: |
+          docker run --rm \
+            --env-file /home/ec2-user/myapp/.env \
+            ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest \
+            npm run typeorm migration:run
 
       - name: Restart container
         run: |
