@@ -9,7 +9,6 @@ import { Notification } from './entities/notification.entity';
 import { NotificationQueue } from 'src/queues/notification.queue';
 import { NotificationProcessor } from 'src/processors/notification.processor';
 import { BullModule } from '@nestjs/bullmq';
-import { NotificationTestProcessor } from 'src/processors/notificationTest.processor';
 
 @Module({
   imports: [
@@ -37,7 +36,6 @@ import { NotificationTestProcessor } from 'src/processors/notificationTest.proce
     NotificationService,
     NotificationQueue,
     NotificationProcessor,
-    NotificationTestProcessor,
   ],
   exports: [NotificationService, NotificationQueue],
 })
