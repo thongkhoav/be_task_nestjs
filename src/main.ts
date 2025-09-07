@@ -23,9 +23,17 @@ async function bootstrap() {
   );
   app.use(cookieParser());
   app.enableCors({
-    origin: ['http://localhost:3000', process.env.FE_HOST],
+    origin: [
+      'http://localhost:3000',
+      configService.get<string>('FE_HOST') || process.env.FE_HOST,
+    ],
     credentials: true,
   });
+
+  console.log('CORS ORIGIN: ', [
+    'http://localhost:3000',
+    configService.get<string>('FE_HOST') || process.env.FE_HOST,
+  ]);
 
   const config = new DocumentBuilder()
     .setTitle('Task app')

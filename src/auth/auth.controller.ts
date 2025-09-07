@@ -115,6 +115,7 @@ export class AuthController {
         httpOnly:
           this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
         secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
+        domain: this.config.get<string>('COOKIE_FE_HOST', 'localhost'),
       },
     );
 
@@ -144,6 +145,7 @@ export class AuthController {
         httpOnly:
           this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
         secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
+        domain: this.config.get<string>('COOKIE_FE_HOST', 'localhost'),
       });
 
       return 'Logged out';
@@ -182,6 +184,7 @@ export class AuthController {
         httpOnly:
           this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
         secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
+        domain: this.config.get<string>('COOKIE_FE_HOST', 'localhost'),
       });
       if (body.fcmToken) {
         await this.authService.logout(userId, body.fcmToken);
@@ -199,6 +202,7 @@ export class AuthController {
         httpOnly:
           this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
         secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
+        domain: this.config.get<string>('COOKIE_FE_HOST', 'localhost'),
       },
     );
     return tokens;
