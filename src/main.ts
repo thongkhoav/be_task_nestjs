@@ -38,6 +38,7 @@ async function bootstrap() {
 
   await app.listen(
     configService.get<number>('PORT') || process.env.PORT || 3333,
+    '0.0.0.0',
   );
 }
 bootstrap();
