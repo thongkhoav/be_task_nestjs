@@ -59,10 +59,10 @@ jobs:
 
       - name: Restart container
         run: |
-          docker stop myapp || true
-          docker rm myapp || true
+          docker stop backend || true
+          docker rm backend || true
           docker run -d --env-file /home/ec2-user/myapp/.env \
             -p 3333:3333 \
             --network mynetwork \
-            --name myapp \
+            --name backend \
             ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
