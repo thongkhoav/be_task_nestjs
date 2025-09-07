@@ -23,7 +23,7 @@ async function bootstrap() {
   );
   app.use(cookieParser());
   app.enableCors({
-    origin: configService.get<string>('FE_HOST'),
+    origin: '*',
     credentials: true,
   });
 
