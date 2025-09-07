@@ -17,6 +17,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './mail/mail.module';
 import { ChatModule } from './chat/chat.module';
 import { UserModule } from './user/user.module';
+import { HealthModule } from './health/health.module';
 
 config();
 
@@ -43,6 +44,7 @@ config();
     NotificationModule,
     ChatModule,
     UserModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [
