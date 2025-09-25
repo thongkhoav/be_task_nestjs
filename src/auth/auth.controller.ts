@@ -28,6 +28,7 @@ import { GetRequestData } from 'src/common/decorators/get-request-data.decorator
 import { User } from './entities/user.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller({ version: '1', path: 'auth' })
 export class AuthController {
@@ -120,6 +121,40 @@ export class AuthController {
     );
 
     return tokens;
+  }
+
+  @Public()
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // Guard handles redirect
+  }
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleRedirect(@Req() req, @Res({ passthrough: true }) res) {
+    // User object comes from GoogleStrategy.validate()
+    const user = req.user;
+
+    const tokens = await this.authService.validateGoogleUser(user);
+
+    res.cookie(
+      this.config.get<string>('COOKIE_AUTH', 'TaskApp_Tokens'),
+      JSON.stringify(tokens),
+      {
+        maxAge:
+          +this.config.get<number>('COOKIE_DURATION', 60 * 60 * 24 * 7) * 1000, // 7 days
+        sameSite: 'none',
+        httpOnly:
+          this.config.get<string>('Cookie_HttpOnly', 'false') === 'true', // set to true in production
+        secure: this.config.get<string>('Cookie_Secure', 'false') === 'true', // set to true in production
+        domain: this.config.get<string>('COOKIE_FE_HOST', 'localhost'),
+      },
+    );
+
+    // redirect back to frontend
+    res.redirect(process.env.FE_REDIRECT_URL || 'http://localhost:3000');
   }
 
   @Post('logout')
