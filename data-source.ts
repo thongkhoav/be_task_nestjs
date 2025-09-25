@@ -12,10 +12,10 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_DATABASE,
   entities: ['dist/**/*.entity{.ts,.js}'],
   migrations: ['dist/src/migrations/*{.ts,.js}'],
-  // ssl:
-  //   process.env.NODE_ENV === 'production'
-  //     ? { rejectUnauthorized: false }
-  //     : false,
-  ssl: { rejectUnauthorized: false },
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
+  // ssl: { rejectUnauthorized: false },
   synchronize: false, // set to false in production
 });

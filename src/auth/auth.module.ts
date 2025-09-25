@@ -12,10 +12,14 @@ import { LoginSession } from './entities/login-session.entity';
 import { Notification } from 'src/notification/entities/notification.entity';
 import { MailService } from 'src/mail/mail.service';
 import { MailModule } from 'src/mail/mail.module';
+import { ConfigModule } from '@nestjs/config';
+import googleOauthConfig from './config/google-oauth.config';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    ConfigModule.forFeature(googleOauthConfig),
     JwtModule.register({
       secretOrPrivateKey: process.env.ACCESS_TOKEN_SECRET,
       signOptions: { expiresIn: '7d' },
@@ -30,7 +34,7 @@ import { MailModule } from 'src/mail/mail.module';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [RtStrategy, JwtStrategy, AuthService],
+  providers: [RtStrategy, JwtStrategy, GoogleStrategy, AuthService],
   // exports: [JwtStrategy, PassportModule],
 })
 export class AuthModule {}

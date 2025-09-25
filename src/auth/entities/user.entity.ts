@@ -1,5 +1,5 @@
 import { AbstractEntity } from 'src/database/abstract.entity';
-import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany } from 'typeorm';
 import { UserRoom } from './user-room.entity';
 import { Task } from 'src/task/entities/task.entity';
 import { Role } from './role.entity';
@@ -10,15 +10,19 @@ import { Message } from 'src/chat/entities/message.entity';
 @Entity()
 export class User extends AbstractEntity<User> {
   @Column()
+  @Index()
   email: string;
 
   // password
-  @Column({ select: false })
-  password: string;
+  @Column({ select: false, nullable: true })
+  password: string | null;
 
   // full name
   @Column()
   fullName: string;
+
+  @Column({ default: false })
+  googleLogin: boolean;
 
   @ManyToOne(() => Role, (role) => role.users)
   role: Role; // Foreign key to Role

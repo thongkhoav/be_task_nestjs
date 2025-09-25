@@ -25,6 +25,7 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:3000',
+      'https://accounts.google.com/o/oauth2/v2/auth',
       configService.get<string>('FE_HOST') || process.env.FE_HOST,
     ],
     credentials: true,
