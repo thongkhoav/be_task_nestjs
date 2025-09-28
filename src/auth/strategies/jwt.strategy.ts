@@ -31,6 +31,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
             data = JSON.parse(data);
           }
 
+          console.log('After parsed cookie: ', data);
+
           return data.access_token;
         },
       ]),

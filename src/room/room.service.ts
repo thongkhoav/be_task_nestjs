@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -16,6 +17,8 @@ import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import { NotificationService } from 'src/notification/notification.service';
 import { Task } from 'src/task/entities/task.entity';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class RoomService implements RoomServiceInterface {
@@ -31,6 +34,7 @@ export class RoomService implements RoomServiceInterface {
     private entityManager: EntityManager,
     private configService: ConfigService,
     private notificationService: NotificationService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async leaveRoomValidator(userId: string, roomId: string) {
@@ -254,13 +258,19 @@ export class RoomService implements RoomServiceInterface {
       throw new NotFoundException('User is not a member of the room');
     }
 
+    // Cache hit
+    const cacheKey = `room:${roomId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    // DB query
     const owner = await this.userRoomRepo.findOne({
       where: { room: { id: roomId }, isOwner: true },
       relations: ['user'],
       select: ['user'],
     });
     const room = await this.roomRepository.findOneBy({ id: roomId });
-    return {
+    const response = {
       roomName: room.name,
       roomDescription: room.description,
       owner: {
@@ -275,6 +285,10 @@ export class RoomService implements RoomServiceInterface {
           'task_app/invite',
         )}/${room.inviteCode}`,
     };
+
+    // Cache set
+    await this.cacheManager.set(cacheKey, response, 60 * 1000);
+    return response;
   }
 
   async isRoomCreator(userId: string, roomId: string) {
@@ -339,6 +353,8 @@ export class RoomService implements RoomServiceInterface {
 
   async updateRoom(roomId: string, dto: UpdateRoomDto) {
     await this.roomRepository.update({ id: roomId }, dto);
+    const roomCacheKey = `room:${roomId}`;
+    await this.cacheManager.del(roomCacheKey);
   }
 
   async removeRoomValidator(ownerId: string, roomId: string): Promise<void> {
