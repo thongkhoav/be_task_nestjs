@@ -22,6 +22,7 @@ export class NotificationQueue {
     deviceToken: string,
     taskTitle: string,
     taskRoom: string,
+    userEmail: string,
     delayMs: number,
   ) {
     const jobId = `task-reminder--${taskId}--${deviceToken}`;
@@ -44,6 +45,7 @@ export class NotificationQueue {
         deviceToken,
         taskTitle,
         taskRoom,
+        userEmail,
       },
       {
         delay: delayMs, // Delay in milliseconds

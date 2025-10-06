@@ -14,11 +14,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         database: config.getOrThrow('DB_DATABASE'),
         autoLoadEntities: true,
         synchronize: false, // set to false in production
-        // ssl:
-        //   config.get('NODE_ENV') === 'production'
-        //     ? { rejectUnauthorized: false }
-        //     : false, // set ssl false in development, true in production
-        ssl: { rejectUnauthorized: false },
+        ssl:
+          config.get('NODE_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false, // set ssl false in development, true in production
+        // ssl: { rejectUnauthorized: false },
         migrations: ['dist/migrations/*{.ts,.js}'],
       }),
       inject: [ConfigService],

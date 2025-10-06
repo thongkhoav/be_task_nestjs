@@ -197,6 +197,7 @@ export class TaskService implements TaskServiceInterface {
       );
       const fcmTokens = await this.loginSessionRepository.find({
         where: { user: { id: task.userId } },
+        relations: ['user'],
       });
       console.log('schedule reminder', {
         fcmTokens,
@@ -214,6 +215,7 @@ export class TaskService implements TaskServiceInterface {
             token.fcmToken,
             task.title,
             room.name,
+            token.user.email,
             delayMs,
           );
         });
@@ -301,6 +303,7 @@ export class TaskService implements TaskServiceInterface {
         await this.notificationQueue.removeScheduleJobs(taskId);
         const fcmTokens = await this.loginSessionRepository.find({
           where: { user: { id: notifyUserId } },
+          relations: ['user'],
         });
         const reminderBeforeDeadline =
           this.config.get<number>('TASK_REMINDER_BEFORE_DEADLINE') || 30;
@@ -314,6 +317,7 @@ export class TaskService implements TaskServiceInterface {
               token.fcmToken,
               task.title,
               existTask.room.name,
+              token.user.email,
               delayMs,
             );
           });
