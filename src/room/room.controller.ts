@@ -10,11 +10,13 @@ import {
   Req,
   NotFoundException,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { JoinRoomDto } from './dto/join-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller({ version: '1', path: 'room' })
 export class RoomController {
@@ -135,6 +137,7 @@ export class RoomController {
     if (!curUserId) {
       throw new NotFoundException('User not found');
     }
+
     const data = await this.roomService.getRoomById(curUserId, roomId);
     return { data };
   }

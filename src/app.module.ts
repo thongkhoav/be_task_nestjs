@@ -18,12 +18,20 @@ import { MailModule } from './mail/mail.module';
 import { ChatModule } from './chat/chat.module';
 import { UserModule } from './user/user.module';
 import { HealthModule } from './health/health.module';
-
+import { CacheModule } from '@nestjs/cache-manager';
+import * as redisStore from 'cache-manager-redis-store';
 config();
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CacheModule.register({
+      isGlobal: true,
+      store: redisStore,
+      host: 'localhost',
+      port: 6379,
+      ttl: 600,
+    }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

@@ -4,11 +4,18 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+  app.use(
+    rateLimit({
+      windowMs: 60 * 1000, // 1 phút
+      max: 100, // Giới hạn 100 yêu cầu mỗi IP mỗi phút
+    }),
+  );
   app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
