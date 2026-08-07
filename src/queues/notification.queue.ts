@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class NotificationQueue {
@@ -25,7 +26,10 @@ export class NotificationQueue {
     userEmail: string,
     delayMs: number,
   ) {
-    const jobId = `task-reminder--${taskId}--${deviceToken}`;
+    const deviceTokenKey = createHash('sha256')
+      .update(deviceToken)
+      .digest('hex');
+    const jobId = `task-reminder--${taskId}--${deviceTokenKey}`;
     // Check if a job with the same ID already exists
     const existingJob = await this.queue.getJob(jobId);
     if (existingJob) {

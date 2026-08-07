@@ -5,34 +5,40 @@ import {
   MessageBody,
   ConnectedSocket,
   WebSocketServer,
+  OnGatewayInit,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from 'src/chat/chat.service';
+import { SocketSecurityService } from './socket-security.service';
+import { socketCors } from './socket-cors';
 
 @WebSocketGateway({
-  cors: {
-    origin: '*',
-  },
+  cors: socketCors,
 })
-export class ChatGateway {
+export class ChatGateway implements OnGatewayInit {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly socketSecurity: SocketSecurityService,
+  ) {}
+
+  afterInit(server: Server) {
+    this.socketSecurity.install(server);
+  }
 
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody() roomId: string,
   ) {
-    if (client.rooms.has(roomId)) {
-      console.log(`Client ${client.id} already in room ${roomId}`);
-      return;
+    await this.socketSecurity.assertRoomMember(client, roomId);
+    if (!client.rooms.has(roomId)) {
+      await client.join(roomId);
     }
-    console.log(`Client ${client.id} joining room ${roomId}`);
-    client.join(roomId);
 
-    // Send chat history to the user who joined
     const history = await this.chatService.getRoomMessages(roomId);
     client.emit('chatHistory', history);
   }
@@ -42,8 +48,8 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() roomId: string,
   ) {
-    console.log(`Client ${client.id} leaving room ${roomId}`);
-    client.leave(roomId);
+    await this.socketSecurity.assertRoomMember(client, roomId);
+    await client.leave(roomId);
   }
 
   @SubscribeMessage('sendMessage')
@@ -51,18 +57,23 @@ export class ChatGateway {
     @MessageBody()
     payload: {
       roomId: string;
-      userId: string;
       content: string;
     },
+    @ConnectedSocket() client: Socket,
   ) {
-    console.log('Received message:', payload);
+    if (!payload.roomId || !payload.content?.trim()) {
+      throw new WsException('Invalid message');
+    }
+    const userId = await this.socketSecurity.assertRoomMember(
+      client,
+      payload.roomId,
+    );
     const msg = await this.chatService.saveMessage(
       payload.roomId,
-      payload.userId,
+      userId,
       payload.content,
     );
 
-    // Broadcast new message to everyone in the room
     this.server.to(payload.roomId).emit('newMessage', msg);
   }
 }

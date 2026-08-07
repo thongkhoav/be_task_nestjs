@@ -88,6 +88,9 @@ export class RoomService implements RoomServiceInterface {
       where: { room: { id: roomId }, isOwner: true },
       relations: ['user'],
     });
+    if (!owner?.user) {
+      throw new NotFoundException('Room owner not found');
+    }
     await this.notificationService.sendNotificationAndSave(
       owner.user.id,
       'Member left room',
@@ -104,14 +107,6 @@ export class RoomService implements RoomServiceInterface {
     const userRoom = await this.userRoomRepo.findOne({
       where: { user: { id: user.id }, room: { id: roomId } },
     });
-    console.log('isRoomMemberById');
-
-    console.log({
-      roomId,
-      userId,
-    });
-    console.log(userRoom);
-
     return !!userRoom;
   }
 
@@ -237,6 +232,9 @@ export class RoomService implements RoomServiceInterface {
     return userRooms.map((userRoom) => {
       const room = userRoom.room;
       const owner = room.userRooms.find((userRoom) => userRoom.isOwner);
+      if (!owner?.user) {
+        throw new NotFoundException('Room owner not found');
+      }
       return {
         id: room.id,
         name: room.name,
@@ -270,6 +268,12 @@ export class RoomService implements RoomServiceInterface {
       select: ['user'],
     });
     const room = await this.roomRepository.findOneBy({ id: roomId });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+    if (!owner?.user) {
+      throw new NotFoundException('Room owner not found');
+    }
     const response = {
       roomName: room.name,
       roomDescription: room.description,
@@ -308,8 +312,6 @@ export class RoomService implements RoomServiceInterface {
     });
 
     if (!userRoom) {
-      console.log('userRoom not found');
-
       return false;
     }
     return true;
@@ -321,7 +323,6 @@ export class RoomService implements RoomServiceInterface {
   }
 
   async createRoom(creatorId: string, room: CreateRoomDto) {
-    console.log('creatorId', creatorId);
     await this.entityManager.transaction(async (manager) => {
       const creator = await this.userRepo.findOneBy({ id: creatorId });
       let userRoom = new UserRoom({ user: creator, isOwner: true });
@@ -504,6 +505,7 @@ export class RoomService implements RoomServiceInterface {
       // also unassign all tasks
       const members = await this.userRoomRepo.find({
         where: { room: { id: roomId }, isOwner: false },
+        relations: ['user'],
       });
       for (const member of members) {
         // unassign all tasks
@@ -541,7 +543,15 @@ export class RoomService implements RoomServiceInterface {
     }
   }
 
-  async getUserOfRoom(roomId: string, includeOwner: boolean) {
+  async getUserOfRoom(
+    requesterId: string,
+    roomId: string,
+    includeOwner: boolean,
+  ) {
+    if (!(await this.isRoomMemberById(roomId, requesterId))) {
+      throw new UnauthorizedException('You are not a member of this room');
+    }
+
     //   const query = this.userRoomRepo.createQueryBuilder('userRoom')
     //   .innerJoinAndSelect('userRoom.user', 'user')
     //   .where('userRoom.room.id = :roomId', { roomId })

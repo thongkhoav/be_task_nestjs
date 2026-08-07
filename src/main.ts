@@ -5,6 +5,8 @@ import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import rateLimit from 'express-rate-limit';
+import { parseFrontendOrigins } from './common/util/frontendOrigins';
+import { resolvePort } from './common/util/port';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,19 +31,19 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  const frontendOrigins = parseFrontendOrigins(
+    configService.get<string>('FE_ORIGINS') || process.env.FE_ORIGINS,
+  );
+  const corsOrigins = [
+    ...new Set(['http://localhost:3000', ...frontendOrigins]),
+  ];
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://accounts.google.com/o/oauth2/v2/auth',
-      configService.get<string>('FE_HOST') || process.env.FE_HOST,
-    ],
+    origin: corsOrigins,
     credentials: true,
   });
 
-  console.log('CORS ORIGIN: ', [
-    'http://localhost:3000',
-    configService.get<string>('FE_HOST') || process.env.FE_HOST,
-  ]);
+  console.log('CORS ORIGIN: ', corsOrigins);
 
   const config = new DocumentBuilder()
     .setTitle('Task app')
@@ -52,9 +54,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(
-    configService.get<number>('PORT') || process.env.PORT || 3333,
-    '0.0.0.0',
-  );
+  const port = resolvePort(configService.get<string>('PORT'), 3333);
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

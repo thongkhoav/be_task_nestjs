@@ -51,10 +51,14 @@ export class TaskService implements TaskServiceInterface {
     // check if task exists
     const task = await this.taskRepository.findOne({
       where: { id: taskId },
+      relations: ['room'],
     });
 
     if (!task) {
       throw new NotFoundException('Task not found');
+    }
+    if (!task.room) {
+      throw new NotFoundException('Task room not found');
     }
 
     // check current user is owner of the room
@@ -62,7 +66,7 @@ export class TaskService implements TaskServiceInterface {
       where: { user: { id: ownerId }, room: { id: task.room.id } },
     });
 
-    if (!userRoom.isOwner) {
+    if (!userRoom?.isOwner) {
       throw new UnauthorizedException('You are not allowed to assign task');
     }
 
@@ -103,13 +107,14 @@ export class TaskService implements TaskServiceInterface {
   }
 
   async getTasksOfRoom(
+    requesterId: string,
     roomId: string,
     userId: string,
     startDate?: string,
     endDate?: string,
   ): Promise<any[]> {
-    // use query builder to get tasks of room
-    console.log('params ', { roomId, userId, startDate, endDate });
+    await this.assertRoomMember(requesterId, roomId);
+
     const query = this.taskRepository
       .createQueryBuilder('task')
       .leftJoinAndSelect('task.user', 'user')
@@ -129,7 +134,10 @@ export class TaskService implements TaskServiceInterface {
     return tasks;
   }
 
-  async createTaskValidator(task: CreateTaskDto): Promise<void> {
+  async createTaskValidator(
+    requesterId: string,
+    task: CreateTaskDto,
+  ): Promise<void> {
     // check if dueDate is valid
     if (task.dueDate < new Date()) {
       throw new BadRequestException('Due date is invalid');
@@ -142,6 +150,7 @@ export class TaskService implements TaskServiceInterface {
     if (!room) {
       throw new NotFoundException('Room not found');
     }
+    await this.assertRoomMember(requesterId, room.id);
 
     // check if user exists
     if (task.userId) {
@@ -184,11 +193,8 @@ export class TaskService implements TaskServiceInterface {
     if (room) {
       newTask.room = room;
     }
-    console.log(newTask);
-
     // save task and get task
     const taskCreated = await this.taskRepository.save(newTask);
-    console.log('Task created');
     if (task.userId) {
       await this.notificationService.sendNotificationAndSave(
         task.userId,
@@ -198,11 +204,6 @@ export class TaskService implements TaskServiceInterface {
       const fcmTokens = await this.loginSessionRepository.find({
         where: { user: { id: task.userId } },
         relations: ['user'],
-      });
-      console.log('schedule reminder', {
-        fcmTokens,
-        duedate: new Date(task.dueDate).getTime(),
-        beforeDeadline: delayMsCalculator(task.dueDate) > 0,
       });
       const reminderBeforeDeadline =
         this.config.get<number>('TASK_REMINDER_BEFORE_DEADLINE') || 30;
@@ -225,6 +226,7 @@ export class TaskService implements TaskServiceInterface {
   }
 
   async updateTaskValidator(
+    requesterId: string,
     taskId: string,
     task: UpdateTaskDto,
   ): Promise<void> {
@@ -242,6 +244,7 @@ export class TaskService implements TaskServiceInterface {
     if (!existTask) {
       throw new NotFoundException('Task not found');
     }
+    await this.assertRoomMember(requesterId, existTask.room.id);
 
     // check if user exists
     if (task?.userId) {
@@ -265,7 +268,7 @@ export class TaskService implements TaskServiceInterface {
   async updateTask(taskId: string, task: UpdateTaskDto): Promise<void> {
     let existTask = await this.taskRepository.findOne({
       where: { id: taskId },
-      relations: ['room'],
+      relations: ['room', 'user'],
     });
 
     if (!existTask) {
@@ -343,8 +346,6 @@ export class TaskService implements TaskServiceInterface {
       relations: ['room', 'user'],
     });
 
-    console.log('call event emitter, then emit to socket');
-
     // call event emitter, then emit to socket
     this.eventEmitter.emit('task.updated', existTask);
   }
@@ -392,7 +393,7 @@ export class TaskService implements TaskServiceInterface {
     // });
 
     // owner or assignee can update status
-    if (!userRoom.isOwner && !(existTask.user.id === userId)) {
+    if (!userRoom || (!userRoom.isOwner && existTask.user?.id !== userId)) {
       throw new UnauthorizedException('You are not allowed to update status');
     }
   }
@@ -406,15 +407,21 @@ export class TaskService implements TaskServiceInterface {
       where: { id: task.taskId },
       relations: ['room', 'user'],
     });
-
-    taskDb.status = task.status;
-    await this.taskRepository.save(taskDb);
+    if (!taskDb) {
+      throw new NotFoundException('Task not found');
+    }
 
     // notify to room owner
     const roomOwner = await this.userRoomRepository.findOne({
       where: { room: { id: taskDb.room.id }, isOwner: true },
       relations: ['user'],
     });
+    if (!roomOwner?.user) {
+      throw new NotFoundException('Room owner not found');
+    }
+
+    taskDb.status = task.status;
+    await this.taskRepository.save(taskDb);
 
     // memmber update status to DONE -> notify to owner
     if (curUserId !== roomOwner.user.id && task.status === TaskStatus.DONE) {
@@ -427,5 +434,17 @@ export class TaskService implements TaskServiceInterface {
     // console.log('taskDb', taskDb);
 
     return taskDb;
+  }
+
+  private async assertRoomMember(
+    userId: string,
+    roomId: string,
+  ): Promise<void> {
+    const membership = await this.userRoomRepository.findOne({
+      where: { user: { id: userId }, room: { id: roomId } },
+    });
+    if (!membership) {
+      throw new UnauthorizedException('You are not a member of this room');
+    }
   }
 }

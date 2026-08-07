@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Inject,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -27,8 +28,11 @@ export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()
-  async create(@Body() createTaskDto: CreateTaskDto) {
-    await this.taskService.createTaskValidator(createTaskDto);
+  async create(@Body() createTaskDto: CreateTaskDto, @Req() req) {
+    const curUserId = req?.user?.id;
+    if (!curUserId) throw new UnauthorizedException('User not found');
+
+    await this.taskService.createTaskValidator(curUserId, createTaskDto);
     await this.taskService.createTask(createTaskDto);
     return { message: 'Task created' };
   }
@@ -37,8 +41,12 @@ export class TaskController {
   async updateTaskInfo(
     @Param('taskId') taskId: string,
     @Body() dto: UpdateTaskDto,
+    @Req() req,
   ) {
-    await this.taskService.updateTaskValidator(taskId, dto);
+    const curUserId = req?.user?.id;
+    if (!curUserId) throw new UnauthorizedException('User not found');
+
+    await this.taskService.updateTaskValidator(curUserId, taskId, dto);
     await this.taskService.updateTask(taskId, dto);
     return { message: 'Task updated' };
   }
@@ -49,9 +57,13 @@ export class TaskController {
     @Query('userId') userId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Req() req?,
   ) {
-    console.log('Fetching tasks for room:', roomId, 'user:', userId);
+    const curUserId = req?.user?.id;
+    if (!curUserId) throw new UnauthorizedException('User not found');
+
     const data = await this.taskService.getTasksOfRoom(
+      curUserId,
       roomId,
       userId,
       startDate,
@@ -92,7 +104,10 @@ export class TaskController {
       assignTaskDto.taskId,
       assignTaskDto.userId,
     );
-    await this.taskService.assignTask(assignTaskDto.taskId, curUserId);
+    await this.taskService.assignTask(
+      assignTaskDto.taskId,
+      assignTaskDto.userId,
+    );
     return { message: 'Task assigned' };
   }
 }

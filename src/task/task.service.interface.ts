@@ -6,16 +6,21 @@ import { Task } from './entities/task.entity';
 export interface TaskServiceInterface {
   getAllTasksOfRoom(roomId: string): Promise<any[]>; // string for GUIDs
   getTasksOfRoom(
+    requesterId: string,
     roomId: string,
     userId: string,
     startDate?: string,
     endDate?: string,
   ): Promise<any[]>;
 
-  createTaskValidator(task: CreateTaskDto): Promise<void>;
+  createTaskValidator(requesterId: string, task: CreateTaskDto): Promise<void>;
   createTask(task: CreateTaskDto): Promise<boolean>;
 
-  updateTaskValidator(taskId: string, task: UpdateTaskDto): Promise<void>;
+  updateTaskValidator(
+    requesterId: string,
+    taskId: string,
+    task: UpdateTaskDto,
+  ): Promise<void>;
   updateTask(taskId: string, task: UpdateTaskDto): Promise<void>;
 
   deleteTask(id: string): Promise<void>;

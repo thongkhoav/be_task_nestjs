@@ -7,7 +7,7 @@ import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { DataSource, EntityManager, LessThan, Repository } from 'typeorm';
 import { AuthDto } from './dto';
-import { JwtPayload, Tokens } from './types';
+import { AuthenticatedUser, JwtPayload, Tokens } from './types';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 const bcrypt = require('bcrypt');
@@ -68,34 +68,36 @@ export class AuthService {
     await this.userRepo.save(user);
   }
 
-  async login(loginRequestDto: LoginRequestDto): Promise<Tokens> {
+  async login(
+    loginRequestDto: LoginRequestDto,
+  ): Promise<{ tokens: Tokens; user: AuthenticatedUser }> {
     const user = await this.userRepo.findOne({
       where: { email: loginRequestDto.email },
       select: ['id', 'password', 'email', 'fullName', 'role'],
       relations: ['role'],
     });
     if (!user) {
-      console.log('User not found');
       throw new UnauthorizedException('User not found');
+    }
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const isValidPassword = await bcrypt.compare(
       loginRequestDto.password,
       user.password,
     );
-    console.log({
-      user,
-    });
-
     if (!isValidPassword) {
-      console.log('Invalid password');
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const accessToken = await this.createAccessToken(user);
     const refreshToken = await this.createNewRefreshToken(user);
 
-    return { access_token: accessToken, refresh_token: refreshToken };
+    return {
+      tokens: { access_token: accessToken, refresh_token: refreshToken },
+      user: this.toAuthenticatedUser(user),
+    };
   }
 
   async validateGoogleUser(googleUser: any): Promise<Tokens> {
@@ -122,7 +124,6 @@ export class AuthService {
         googleLogin: true,
       });
       user = await this.userRepo.save(newUser);
-      await this.userRepo.save(user);
     }
 
     const accessToken = await this.createAccessToken(user);
@@ -135,12 +136,9 @@ export class AuthService {
     const loginSession = await this.loginSessionRepository.findOne({
       where: { fcmToken: fcmToken, user: { id: userId } },
     });
-    console.log('logout: ', {
-      userId,
-      fcmToken,
-      loginSession,
-    });
-    await this.loginSessionRepository.softRemove(loginSession);
+    if (loginSession) {
+      await this.loginSessionRepository.softRemove(loginSession);
+    }
   }
 
   async requestPasswordReset(email: string) {
@@ -181,11 +179,19 @@ export class AuthService {
     try {
       const user = await this.userRepo.findOne({
         where: { id },
+        relations: ['role'],
       });
       return user;
     } catch {
       return null;
     }
+  }
+
+  async getAuthenticatedUserById(
+    id: string,
+  ): Promise<AuthenticatedUser | null> {
+    const user = await this.getUserById(id);
+    return user ? this.toAuthenticatedUser(user) : null;
   }
 
   private async createNewRefreshToken(user: User): Promise<string> {
@@ -276,5 +282,14 @@ export class AuthService {
       secret: this.config.get<string>('ACCESS_TOKEN_SECRET'),
       expiresIn: this.config.get<string>('ACCESS_TOKEN_DURATION'),
     });
+  }
+
+  private toAuthenticatedUser(user: User): AuthenticatedUser {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role?.title,
+    };
   }
 }

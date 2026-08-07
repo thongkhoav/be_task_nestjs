@@ -22,20 +22,13 @@ export class NotificationService {
 
   // test
   async sendNotification(fcmToken: string, title: string, body: string) {
-    try {
-      console.log('fcmToken', fcmToken);
-
-      const data = await admin.messaging().send({
-        token: fcmToken,
-        notification: {
-          title,
-          body,
-        },
-      });
-      console.log('Successfully sent message:', data);
-    } catch (error) {
-      console.log('Error sending message:', error);
-    }
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: {
+        title,
+        body,
+      },
+    });
   }
 
   async sendNotificationToUser(userId: string, title: string, body: string) {
@@ -57,7 +50,6 @@ export class NotificationService {
         });
       }
     } catch (error) {
-      console.log('Error sending message:', error);
       throw new Error(error.message);
     }
   }
@@ -78,10 +70,7 @@ export class NotificationService {
       notification.body = body;
       notification.user = user;
       await this.notificationRepository.save(notification);
-      console.log('save notification');
-    } catch (error) {
-      console.log('Error sending message:', error);
-    }
+    } catch {}
   }
 
   async updateFcmToken(updateFcmTokenDto: {
@@ -90,7 +79,6 @@ export class NotificationService {
   }) {
     try {
       await this.entityManager.transaction(async (manager) => {
-        console.log('updateFcmTokenDto', updateFcmTokenDto);
         const loginSession = await manager.findOne(LoginSession, {
           where: {
             fcmToken: updateFcmTokenDto.fcmToken,
@@ -98,7 +86,6 @@ export class NotificationService {
           },
         });
         if (!loginSession) {
-          console.log('No existing login session found, creating a new one');
           const newLoginSession = new LoginSession({
             fcmToken: updateFcmTokenDto.fcmToken,
             user: await manager.findOne(User, {
@@ -111,7 +98,6 @@ export class NotificationService {
         }
       });
     } catch (error) {
-      console.log('Error updating fcm token:', error);
       throw new BadRequestException(error.message);
     }
   }
@@ -130,15 +116,12 @@ export class NotificationService {
       });
       return notifications;
     } catch (error) {
-      console.log('Error getting notifications:', error);
       throw new BadRequestException(error.message);
     }
   }
 
   async markAsRead(userId: string, notificationId: string, isReadAll: boolean) {
     try {
-      console.log('markAsRead', userId, notificationId, isReadAll);
-
       if (isReadAll) {
         await this.notificationRepository.update(
           { user: { id: userId } },
@@ -151,7 +134,6 @@ export class NotificationService {
         );
       }
     } catch (error) {
-      console.log('Error marking as read:', error);
       throw new BadRequestException(error.message);
     }
   }

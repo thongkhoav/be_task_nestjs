@@ -13,6 +13,7 @@ COPY --from=builder /app/dist ./dist
 
 RUN npm install --production
 
-EXPOSE 3333
+ENV PORT=3333
+EXPOSE ${PORT}
 
 CMD [ "node","dist/src/main.js" ]

@@ -1,5 +1,4 @@
 import { registerAs } from '@nestjs/config';
-import { JwtModuleOptions } from '@nestjs/jwt';
 
 export default registerAs('googleOauth', () => ({
   clientID: process.env.GOOGLE_CLIENT_ID,

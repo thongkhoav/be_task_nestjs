@@ -2,7 +2,7 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
 export interface RoomServiceInterface {
-  getUserOfRoom(roomId: string, includeOwner: boolean);
+  getUserOfRoom(requesterId: string, roomId: string, includeOwner: boolean);
   getAllRooms(userId: string);
 
   getRoomById(userId: string, roomId: string);

@@ -12,6 +12,7 @@
 - To run:
 
   - Complete .env based on the sample file .env.example
+  - Set `PORT` to customize the backend port (default: `3333`).
   - You have to run a Redis for background reminder.
   - start : nest start
   - start:dev : nest start --watch

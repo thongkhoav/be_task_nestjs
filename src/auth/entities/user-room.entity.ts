@@ -1,10 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, Column } from 'typeorm';
+import { Entity, ManyToOne, Column, Index } from 'typeorm';
 
 import { SmallAbstractEntity } from 'src/database/small-abstract.entity';
 import { User } from './user.entity';
 import { Room } from 'src/room/entities/room.entity';
 
 @Entity()
+@Index('IDX_user_room_active_unique', ['user', 'room'], {
+  unique: true,
+  where: '"deletedDate" IS NULL',
+})
 export class UserRoom extends SmallAbstractEntity<UserRoom> {
   @ManyToOne(() => User, (user) => user.userRooms)
   user: User;
