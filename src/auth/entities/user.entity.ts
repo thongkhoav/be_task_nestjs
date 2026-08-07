@@ -13,12 +13,15 @@ export class User extends AbstractEntity<User> {
   email: string;
 
   // password
-  @Column({ select: false })
-  password: string;
+  @Column({ select: false, nullable: true })
+  password: string | null;
 
   // full name
   @Column()
   fullName: string;
+
+  @Column({ default: false })
+  googleLogin: boolean;
 
   @ManyToOne(() => Role, (role) => role.users)
   role: Role; // Foreign key to Role

@@ -28,6 +28,7 @@ import { GetRequestData } from 'src/common/decorators/get-request-data.decorator
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CookieOptions } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller({ version: '1', path: 'auth' })
 export class AuthController {
@@ -102,6 +103,29 @@ export class AuthController {
     const { tokens, user } = await this.authService.login(dto);
     this.setAuthCookie(res, tokens);
     return user;
+  }
+
+  @Public()
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // Guard handles redirect
+  }
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleRedirect(@Req() req, @Res({ passthrough: true }) res) {
+    // User object comes from GoogleStrategy.validate()
+    const user = req.user;
+
+    const tokens = await this.authService.validateGoogleUser(user);
+    this.setAuthCookie(res, tokens);
+
+    res.redirect(
+      this.config.get<string>('FE_REDIRECT_URL') ||
+        this.config.get<string>('FE_HOST', 'http://localhost:3000'),
+    );
   }
 
   @Post('logout')

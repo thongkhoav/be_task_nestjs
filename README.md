@@ -19,8 +19,8 @@
 
 - Run database migration:
 
-  - npm run build
   - npm run typeorm migration:generate ./src/migrations/{name_of_migration}
+  - npm run build
   - npm run typeorm migration:run
 
 - Notifications:

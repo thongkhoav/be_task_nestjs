@@ -79,6 +79,9 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const isValidPassword = await bcrypt.compare(
       loginRequestDto.password,
@@ -95,6 +98,38 @@ export class AuthService {
       tokens: { access_token: accessToken, refresh_token: refreshToken },
       user: this.toAuthenticatedUser(user),
     };
+  }
+
+  async validateGoogleUser(googleUser: any): Promise<Tokens> {
+    // Check if user exists in DB
+    let user = await this.userRepo.findOne({
+      where: { email: googleUser.email },
+      relations: ['role'],
+    });
+
+    if (!user) {
+      // create new user
+      let role = await this.roleRepo.findOne({
+        where: { title: RoleType.USER },
+      });
+      if (!role) {
+        role = new Role({ title: RoleType.USER });
+        await this.roleRepo.save(role);
+      }
+      const newUser = new User({
+        email: googleUser.email,
+        fullName: googleUser.fullName,
+        password: null, // since Google user
+        role: role,
+        googleLogin: true,
+      });
+      user = await this.userRepo.save(newUser);
+    }
+
+    const accessToken = await this.createAccessToken(user);
+    const refreshToken = await this.createNewRefreshToken(user);
+
+    return { access_token: accessToken, refresh_token: refreshToken };
   }
 
   async logout(userId: string, fcmToken: string): Promise<void> {

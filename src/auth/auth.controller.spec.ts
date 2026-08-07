@@ -14,6 +14,7 @@ describe('AuthController cookie-only token handling', () => {
   const authService = {
     login: jest.fn(),
     refreshAccessToken: jest.fn(),
+    validateGoogleUser: jest.fn(),
   };
   const jwtService = {
     decode: jest.fn(),
@@ -22,6 +23,7 @@ describe('AuthController cookie-only token handling', () => {
     get: jest.fn((key: string, fallback?: any) => {
       const values = {
         COOKIE_AUTH: 'TaskApp_Tokens',
+        FE_HOST: 'https://frontend.example.com',
         NODE_ENV: 'development',
       };
       return values[key] ?? fallback;
@@ -29,6 +31,7 @@ describe('AuthController cookie-only token handling', () => {
   };
   const response = {
     cookie: jest.fn(),
+    redirect: jest.fn(),
   };
 
   let controller: AuthController;
@@ -86,6 +89,27 @@ describe('AuthController cookie-only token handling', () => {
     );
     expect(result).toEqual({ message: 'Tokens refreshed' });
     expect(JSON.stringify(result)).not.toContain('access-secret-value');
+  });
+
+  it('uses the safe cookie policy for Google sign-in and redirects to FE_HOST', async () => {
+    authService.validateGoogleUser.mockResolvedValue(tokens);
+
+    await controller.googleRedirect({ user } as any, response as any);
+
+    expect(authService.validateGoogleUser).toHaveBeenCalledWith(user);
+    expect(response.cookie).toHaveBeenCalledWith(
+      'TaskApp_Tokens',
+      JSON.stringify(tokens),
+      expect.objectContaining({
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        path: '/',
+      }),
+    );
+    expect(response.redirect).toHaveBeenCalledWith(
+      'https://frontend.example.com',
+    );
   });
 
   it('defaults cookies to Secure in production', async () => {
