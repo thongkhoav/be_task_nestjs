@@ -5,6 +5,7 @@ import * as cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import rateLimit from 'express-rate-limit';
+import { parseFrontendOrigins } from './common/util/frontendOrigins';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,18 +30,19 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  const frontendOrigins = parseFrontendOrigins(
+    configService.get<string>('FE_ORIGINS') || process.env.FE_ORIGINS,
+  );
+  const corsOrigins = [
+    ...new Set(['http://localhost:3000', ...frontendOrigins]),
+  ];
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      configService.get<string>('FE_HOST') || process.env.FE_HOST,
-    ],
+    origin: corsOrigins,
     credentials: true,
   });
 
-  console.log('CORS ORIGIN: ', [
-    'http://localhost:3000',
-    configService.get<string>('FE_HOST') || process.env.FE_HOST,
-  ]);
+  console.log('CORS ORIGIN: ', corsOrigins);
 
   const config = new DocumentBuilder()
     .setTitle('Task app')

@@ -24,5 +24,6 @@ import { Task } from 'src/task/entities/task.entity';
   ],
   controllers: [RoomController],
   providers: [RoomService, NotificationService],
+  exports: [RoomService],
 })
 export class RoomModule {}

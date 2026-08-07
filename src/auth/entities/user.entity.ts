@@ -9,7 +9,7 @@ import { Message } from 'src/chat/entities/message.entity';
 
 @Entity()
 export class User extends AbstractEntity<User> {
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   // password

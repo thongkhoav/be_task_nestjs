@@ -11,6 +11,7 @@ import {
   NotFoundException,
   Put,
   UseInterceptors,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -33,8 +34,6 @@ export class RoomController {
     if (!curUserId) {
       throw new NotFoundException('User not found');
     }
-    console.log({ body, roomId });
-
     await this.roomService.addMemberValidator(curUserId, body.email, roomId);
     return this.roomService.addMember(body.email, roomId);
   }
@@ -61,7 +60,6 @@ export class RoomController {
 
   @Post()
   createRoom(@Body() createRoomDto: CreateRoomDto, @Req() req) {
-    console.log(req?.user);
     const userId = req?.user?.id;
 
     if (!userId) {
@@ -74,11 +72,17 @@ export class RoomController {
   async getUserOfRoom(
     @Param('roomId') roomId: string,
     @Query('includeOwner') includeOwner: string = 'true',
+    @Req() req?,
   ) {
-    const includeOwnerBool = includeOwner.toLowerCase() === 'true';
-    console.log({ roomId, includeOwner });
+    const curUserId = req?.user?.id;
+    if (!curUserId) throw new UnauthorizedException('User not found');
 
-    const data = await this.roomService.getUserOfRoom(roomId, includeOwnerBool);
+    const includeOwnerBool = includeOwner.toLowerCase() === 'true';
+    const data = await this.roomService.getUserOfRoom(
+      curUserId,
+      roomId,
+      includeOwnerBool,
+    );
     return { data };
   }
 
