@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import rateLimit from 'express-rate-limit';
 import { parseFrontendOrigins } from './common/util/frontendOrigins';
+import { resolvePort } from './common/util/port';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -53,9 +54,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(
-    configService.get<number>('PORT') || process.env.PORT || 3333,
-    '0.0.0.0',
-  );
+  const port = resolvePort(configService.get<string>('PORT'), 3333);
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();

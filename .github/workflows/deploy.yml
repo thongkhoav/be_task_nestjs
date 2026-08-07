@@ -59,10 +59,12 @@ jobs:
 
       - name: Restart container
         run: |
+          BACKEND_PORT="$(awk -F= '/^PORT=[0-9]+$/ { value=$2 } END { print value }' /home/ec2-user/project/backend/.env)"
+          BACKEND_PORT="${BACKEND_PORT:-3333}"
           docker stop backend || true
           docker rm backend || true
           docker run -d --env-file /home/ec2-user/project/backend/.env \
-            -p 3333:3333 \
+            -p "${BACKEND_PORT}:${BACKEND_PORT}" \
             --network mynetwork \
             --name backend \
             ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
