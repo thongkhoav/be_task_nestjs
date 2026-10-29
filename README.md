@@ -1,50 +1,55 @@
-# Backend NestJS
+# Task Rooms API (NestJS)
 
-# FE source code: https://github.com/thongkhoav/fe_task_nextjs
+Backend for a real-time team task board: users create rooms, invite members with a code, assign
+tasks, chat, and get push notifications when something changes.
 
-- Outside of API:
+Frontend: [fe_task_nextjs](https://github.com/thongkhoav/fe_task_nextjs) (Next.js 14).
 
-  - Socket.io: Chat & Task status update
-  - Background job: Task reminder
-  - Email: Forgot password
-  - Firebase messaging for notification
+## Features
 
-- To run:
+- **Auth**: email/password with JWT access + refresh tokens in HTTP-only cookies, Google OAuth
+  endpoint, forgot/reset password by email.
+- **Rooms and tasks**: owners invite members by invite code, create and assign tasks; members
+  update only the tasks assigned to them.
+- **Real time**: Socket.io pushes task status changes and room chat to everyone in the room.
+- **Notifications**: Firebase Cloud Messaging when a member joins, a task is assigned, or a task is
+  marked done.
+- **Background jobs**: BullMQ + Redis queue sends deadline reminders.
+- **API hygiene**: Swagger docs at `/api`, global validation pipe, rate limiting.
 
-  - Complete .env based on the sample file .env.example
-  - Set `PORT` to customize the backend port (default: `3333`).
-  - You have to run a Redis for background reminder.
-  - start : nest start
-  - start:dev : nest start --watch
+## Stack
 
-- Run database migration:
+NestJS 10 · TypeScript · PostgreSQL + TypeORM (migrations) · Redis · BullMQ · Socket.io ·
+Firebase Admin · Nodemailer · Docker
 
-  - npm run typeorm migration:generate ./src/migrations/{name_of_migration}
-  - npm run build
-  - npm run typeorm migration:run
+## Architecture notes
 
-- Notifications:
+- Task updates emit domain events (`@nestjs/event-emitter`); the socket gateway listens to them,
+  which removes the circular dependency between `TaskService` and the gateway.
+- Chat messages stay in the room after a member leaves.
 
-  - User join group by invite code -> Noti to room owner
-  - Room owner assign task(change user of task) -> Noti to assigned member
-  - Member mark DONE task -> Noti to owner
+## Deployment
 
-- Architect:
+GitHub Actions (`.github/workflows/deploy.yml`):
 
-  - Github actions to build image and push to ECR
-  - Run the image can use ECS, App Runner or EC2
-  - Use Github Actions to SSH to EC2, then pull image from ECR and run it
-  - Use event-emitter to break down TaskService and Socket circular dependency.
+1. Build the Docker image and push it to Amazon ECR.
+2. On a self-hosted runner on EC2: pull the image, run TypeORM migrations, restart the container.
 
-- Chat rules:
+## Run locally
 
-  - Messages remain in the channel even after the user leaves.
+```bash
+cp .env.example .env          # fill in DB, JWT, Google, Firebase, Redis and mail settings
+docker compose up -d db redis
+npm install
+npm run start:dev             # http://localhost:3333, Swagger at /api
+```
 
-- Docker run:
+Migrations:
 
-  - If redis is running in docker, make redis container and backend container use the same network
-  - docker network create mynetwork
-  - docker run -dp 6379:6379 --name be-redis redis
+```bash
+npm run typeorm migration:generate ./src/migrations/<name>
+npm run build
+npm run typeorm migration:run
+```
 
-- AWS linux 2023 github-runner:
-  - sudo yum install -y libicu
+Or run everything in Docker: `docker compose up --build`.
